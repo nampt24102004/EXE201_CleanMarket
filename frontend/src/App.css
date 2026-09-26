@@ -1,0 +1,332 @@
+:root {
+  color: #233321;
+  background:
+    radial-gradient(circle at top left, rgba(184, 213, 162, 0.4), transparent 28%),
+    linear-gradient(180deg, #f6f4e9 0%, #fffdf8 52%, #eef5e6 100%);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: transparent;
+  color: #233321;
+}
+
+a {
+  text-decoration: none;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.site-navbar {
+  background: rgba(255, 253, 248, 0.92);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(68, 119, 74, 0.12);
+}
+
+.brand-mark {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #6ea667, #2f6d45);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(47, 109, 69, 0.18);
+}
+
+.nav-link-custom {
+  color: #456143;
+  font-weight: 600;
+}
+
+.hero-section {
+  padding: 3rem 0 2rem;
+}
+
+.hero-card {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(246, 252, 242, 0.94)),
+    #ffffff;
+  border: 1px solid rgba(77, 124, 79, 0.12);
+  border-radius: 28px;
+  padding: 2rem;
+  box-shadow: 0 18px 40px rgba(88, 116, 77, 0.12);
+  overflow: hidden;
+  position: relative;
+}
+
+.hero-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -60px -80px auto;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(147, 192, 128, 0.28), transparent 70%);
+}
+
+.hero-kicker {
+  color: #5d8150;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.hero-title {
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 1rem;
+}
+
+.hero-image-wrap {
+  position: relative;
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-orb {
+  position: absolute;
+  width: 75%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(164, 207, 126, 0.42), rgba(255, 255, 255, 0.2));
+  filter: blur(4px);
+}
+
+.hero-image {
+  position: relative;
+  width: min(100%, 420px);
+  border-radius: 26px;
+  object-fit: cover;
+  box-shadow: 0 18px 48px rgba(64, 97, 60, 0.2);
+}
+
+.section-title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.product-card,
+.summary-card,
+.checkout-card,
+.success-card,
+.detail-card,
+.home-feature-card {
+  border: 1px solid rgba(88, 116, 77, 0.12);
+  border-radius: 22px;
+  box-shadow: 0 14px 28px rgba(85, 114, 74, 0.1);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.product-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  height: 100%;
+}
+
+.product-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 34px rgba(85, 114, 74, 0.15);
+}
+
+.product-card img {
+  height: 220px;
+  object-fit: cover;
+}
+
+.product-card-image {
+  cursor: pointer;
+}
+
+.product-card-image:hover {
+  filter: brightness(0.96);
+}
+
+.organic-badge {
+  background-color: #e4f4d8 !important;
+  color: #3f6b2e !important;
+  border: 1px solid rgba(79, 127, 50, 0.16);
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #4d8a41, #2f6d45);
+  border: none;
+  border-radius: 999px;
+  padding-inline: 1.2rem;
+  font-weight: 700;
+  box-shadow: 0 10px 20px rgba(47, 109, 69, 0.2);
+}
+
+.primary-btn:hover,
+.primary-btn:focus {
+  background: linear-gradient(135deg, #467b3b, #285f3c);
+}
+
+.soft-panel {
+  background: rgba(240, 246, 232, 0.82);
+  border-radius: 20px;
+  border: 1px solid rgba(76, 120, 65, 0.12);
+}
+
+.promo-banner {
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(233, 244, 222, 0.92)),
+    #fff;
+  border: 1px solid rgba(88, 116, 77, 0.14);
+  box-shadow: 0 16px 32px rgba(85, 114, 74, 0.12);
+}
+
+.promo-item {
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(88, 116, 77, 0.1);
+  font-weight: 600;
+  color: #355335;
+}
+
+.page-spacer {
+  flex: 1;
+}
+
+.footer {
+  background: rgba(44, 69, 40, 0.96);
+  color: #eff6ea;
+}
+
+.detail-image {
+  border-radius: 24px;
+  width: 100%;
+  object-fit: cover;
+  min-height: 280px;
+  max-height: 420px;
+}
+
+.qr-panel {
+  background: rgba(240, 246, 232, 0.82);
+  border-radius: 22px;
+  border: 1px dashed rgba(76, 120, 65, 0.22);
+  padding: 1.25rem;
+}
+
+.qr-image {
+  width: min(100%, 220px);
+  border-radius: 18px;
+  background: white;
+  padding: 0.75rem;
+  box-shadow: 0 12px 22px rgba(85, 114, 74, 0.12);
+}
+
+.cart-thumb {
+  width: 112px;
+  height: 112px;
+  object-fit: cover;
+  border-radius: 18px;
+  flex-shrink: 0;
+}
+
+.cart-row + .cart-row {
+  border-top: 1px solid rgba(88, 116, 77, 0.1);
+}
+
+.info-chip {
+  background: #f0f6eb;
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  font-weight: 600;
+  color: #496448;
+}
+
+.success-icon {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #7ab86f, #3a7a44);
+  color: white;
+  font-size: 2rem;
+  box-shadow: 0 14px 26px rgba(58, 122, 68, 0.24);
+}
+
+.contact-block {
+  color: rgba(239, 246, 234, 0.86);
+}
+
+.portal-nav {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  padding-bottom: 0.35rem;
+}
+
+.portal-nav .nav-link {
+  white-space: nowrap;
+  color: #356342;
+  background: #edf4e9;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.portal-nav .nav-link.active {
+  background: #397a47;
+}
+
+.portal-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.4rem;
+  border-radius: 20px;
+  background: white;
+  border: 1px solid rgba(88, 116, 77, 0.12);
+  box-shadow: 0 14px 28px rgba(85, 114, 74, 0.1);
+}
+
+.portal-stat strong {
+  font-size: 2rem;
+  color: #397a47;
+}
+
+.portal-qr {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 0.25rem;
+  background: white;
+}
+
+@media (max-width: 768px) {
+  .hero-card {
+    padding: 1.4rem;
+  }
+
+  .hero-image-wrap {
+    min-height: 260px;
+    margin-top: 1rem;
+  }
+
+  .product-card img {
+    height: 200px;
+  }
+}

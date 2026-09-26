@@ -1,0 +1,32 @@
+﻿# Secrets
+backend/.env
+.env
+.env.*
+
+!backend/.env.example
+!frontend/.env.example
+
+# Java
+backend/target/
+*.class
+*.jar
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+# IDE
+.idea/
+**/.idea/
+*.iml
+.vscode/
+
+# Logs and OS
+*.log
+logs/
+.DS_Store
+Thumbs.db
+
+# IDE generated
+.github/modernize/
