@@ -1,10 +1,10 @@
 # CleanMarket Backend
 
-Spring Boot 3.5 / Java 17 / MySQL API dựa trên hai tài liệu CleanMarket System Design và SRS. Backend dùng session cookie, role USER/PARTNER/MANAGER/ADMIN, JPA, QR theo ProductBatch, checkout nhiều nhà cung cấp, COD, VNPAY Sandbox và payOS/VietQR.
+Spring Boot 3.5 / Java 25 / MySQL API dựa trên hai tài liệu CleanMarket System Design và SRS. Backend dùng session cookie, role USER/PARTNER/MANAGER/ADMIN, JPA, QR theo ProductBatch, checkout nhiều nhà cung cấp, COD, VNPAY Sandbox và payOS/VietQR.
 
 ## Chạy local
 
-1. Cài Java 17+ và MySQL; tạo database `cleanmarket_db` hoặc để JDBC URL tạo database nếu tài khoản có quyền.
+1. Cài Java 25+ và MySQL; tạo database `cleanmarket_db` hoặc để JDBC URL tạo database nếu tài khoản có quyền.
 2. Sao chép [`.env.example`](.env.example) thành `.env`, rồi điền `DB_PASSWORD` và `JWT_SECRET`. Backend tự đọc `.env` từ thư mục làm việc; file này đã được Git bỏ qua.
 3. Chạy trong thư mục `backend`:
 
