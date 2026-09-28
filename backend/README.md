@@ -47,7 +47,7 @@ Danh sách 31 bảng, quan hệ và trạng thái sử dụng nằm trong [data-
 | Admin | `/api/admin/users`, `/api/admin/roles`, `/api/admin/categories`, `/api/admin/audit-logs` |
 | Payment | `POST /api/payments/vnpay/create`, `POST /api/payments/payos/create`, `POST /api/payments/payos/webhook`, `GET /api/payments/order/{orderId}/status` |
 
-Response thành công dùng `{ "success": true, "data": ..., "message": "Success" }`; lỗi dùng `{ "success": false, "code": "...", "message": "...", "errors": [] }`. Đăng ký/đăng nhập trả về `user`, `roles` và thiết lập cookie `JSESSIONID`; không trả `accessToken`. Frontend dùng `fetch(..., { credentials: 'include' })` hoặc Axios `withCredentials: true` cho mọi request.
+Response thành công dùng `{ "success": true, "data": ..., "message": "Success" }`; lỗi dùng `{ "success": false, "code": "...", "message": "...", "errors": [] }`. Đăng ký/đăng nhập trả về `user`, `roles` và thiết lập session cookie (`JSESSIONID` khi chạy local, `__session` trong production để Firebase Hosting chuyển tiếp cookie tới Cloud Run); không trả `accessToken`. Frontend dùng `fetch(..., { credentials: 'include' })` hoặc Axios `withCredentials: true` cho mọi request.
 
 Trước khi gửi POST/PUT/PATCH/DELETE (kể cả đăng nhập/đăng ký), gọi `GET /api/auth/csrf` với cookie, lấy `data.token` và gửi qua header `X-CSRF-TOKEN`. Lấy lại token sau đăng nhập/đăng ký vì token được đổi. Đăng xuất bằng `POST /api/auth/logout` cùng cookie và CSRF token; thành công trả HTTP 204.
 
