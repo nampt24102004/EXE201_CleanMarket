@@ -8,6 +8,7 @@ function CheckoutPage({
   cartItems,
   customerInfo,
   paymentMethod,
+  availablePayments,
   validationErrors,
   onCustomerInfoChange,
   onPaymentMethodChange,
@@ -26,6 +27,9 @@ function CheckoutPage({
       {validationErrors.includes('Giỏ hàng của bạn đang trống.') ? (
         <Alert variant="warning">Giỏ hàng của bạn đang trống, vui lòng thêm sản phẩm trước khi thanh toán.</Alert>
       ) : null}
+      {validationErrors.includes('Phương thức thanh toán này hiện chưa khả dụng.') && (
+        <Alert variant="warning">Phương thức thanh toán này hiện chưa khả dụng. Vui lòng chọn COD.</Alert>
+      )}
       <Row className="g-4">
         <Col lg={7}>
           <Stack gap={4}>
@@ -34,7 +38,7 @@ function CheckoutPage({
               onCustomerInfoChange={onCustomerInfoChange}
               validationErrors={validationErrors}
             />
-            <PaymentMethod value={paymentMethod} onChange={onPaymentMethodChange} />
+            <PaymentMethod value={paymentMethod} onChange={onPaymentMethodChange} availability={availablePayments} />
           </Stack>
         </Col>
         <Col lg={5}>

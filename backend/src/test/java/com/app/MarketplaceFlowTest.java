@@ -28,6 +28,7 @@ import com.app.features.suppliers.repository.SupplierRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "spring.jpa.hibernate.ddl-auto=create-drop",
     "app.auth.email-verification-required=false",
     "app.mail.delivery-enabled=false",
+    "app.payos.client-id=test-client",
+    "app.payos.api-key=test-api-key",
+    "app.payos.checksum-key=test-checksum-key",
     "app.vnpay.tmn-code=TESTCODE",
     "app.vnpay.hash-secret=test-hash-secret"
 })
@@ -124,7 +128,9 @@ class MarketplaceFlowTest {
         assertEquals("CANCELLED", history.findByOrderIdOrderByCreatedAtAsc(cancelId).get(1).getStatus());        var partnerLogin = mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"farma@example.test\",\"password\":\"secure-pass-123\"}")).andExpect(status().isOk()).andReturn();
         MockHttpSession partnerSession = (MockHttpSession) partnerLogin.getRequest().getSession(false);
         mvc.perform(get("/api/partner/products").session(partnerSession)).andExpect(status().isOk());
-        String batchJson = "{\"farmName\":\"Farm A\",\"origin\":\"Vietnam\",\"harvestDate\":\"2026-09-18\",\"packagingDate\":\"2026-09-19\",\"expiryDate\":\"2026-10-10\",\"quantity\":5}";
+        LocalDate today = LocalDate.now();
+        String batchJson = "{\"farmName\":\"Farm A\",\"origin\":\"Vietnam\",\"harvestDate\":\"" + today.minusDays(2)
+            + "\",\"packagingDate\":\"" + today.minusDays(1) + "\",\"expiryDate\":\"" + today.plusDays(30) + "\",\"quantity\":5}";
         mvc.perform(post("/api/partner/products/" + b.getId() + "/batches").with(csrf()).session(partnerSession).contentType(MediaType.APPLICATION_JSON).content(batchJson)).andExpect(status().isForbidden());
         JsonNode batch = body(mvc.perform(post("/api/partner/products/" + a.getId() + "/batches").with(csrf()).session(partnerSession).contentType(MediaType.APPLICATION_JSON).content(batchJson)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         mvc.perform(get("/api/trace/" + batch.path("data").path("traceCode").asText())).andExpect(status().isOk()).andExpect(jsonPath("$.data.productName").value("Carrot"));

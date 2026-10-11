@@ -18,7 +18,7 @@ const paymentOptions = [
   },
 ]
 
-function PaymentMethod({ value, onChange }) {
+function PaymentMethod({ value, onChange, availability }) {
   return (
     <Card className="checkout-card border-0 p-3 p-md-4">
       <Card.Body>
@@ -33,10 +33,11 @@ function PaymentMethod({ value, onChange }) {
               label={
                 <div>
                   <div className="fw-semibold">{option.label}</div>
-                  <small className="text-secondary">{option.description}</small>
+                  <small className="text-secondary">{option.description}{!availability[option.id] && ' (Tạm chưa khả dụng)'}</small>
                 </div>
               }
               checked={value === option.id}
+              disabled={!availability[option.id]}
               onChange={() => onChange(option.id)}
             />
           ))}

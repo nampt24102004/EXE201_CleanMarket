@@ -21,6 +21,7 @@ import com.app.features.orders.repository.OrderRepository;
 import com.app.features.orders.repository.SupplierOrderRepository;
 import com.app.features.orders.service.OrderService;
 import com.app.features.payments.entity.Payment;
+import com.app.features.payments.config.PaymentAvailability;
 import com.app.features.payments.repository.PaymentRepository;
 import com.app.features.payments.provider.PayOSPaymentProvider;
 import com.app.features.payments.provider.PaymentProviderDto;
@@ -34,11 +35,12 @@ import org.springframework.context.ApplicationEventPublisher;
 
 @Service
 public class OrderServiceImpl implements OrderService {
-    private final CartItemRepository cart; private final ProductRepository products; private final OrderRepository orders; private final SupplierOrderRepository supplierOrders; private final OrderItemRepository orderItems; private final PaymentRepository payments; private final CurrentUser current; private final OrderStatusHistoryService history; private final ApplicationEventPublisher events; private final PayOSPaymentProvider payOSProvider;
-    public OrderServiceImpl(CartItemRepository cart, ProductRepository products, OrderRepository orders, SupplierOrderRepository supplierOrders, OrderItemRepository orderItems, PaymentRepository payments, CurrentUser current, OrderStatusHistoryService history, ApplicationEventPublisher events, PayOSPaymentProvider payOSProvider) { this.cart = cart; this.products = products; this.orders = orders; this.supplierOrders = supplierOrders; this.orderItems = orderItems; this.payments = payments; this.current = current; this.history = history; this.events = events; this.payOSProvider = payOSProvider; }
+    private final CartItemRepository cart; private final ProductRepository products; private final OrderRepository orders; private final SupplierOrderRepository supplierOrders; private final OrderItemRepository orderItems; private final PaymentRepository payments; private final CurrentUser current; private final OrderStatusHistoryService history; private final ApplicationEventPublisher events; private final PayOSPaymentProvider payOSProvider; private final PaymentAvailability paymentAvailability;
+    public OrderServiceImpl(CartItemRepository cart, ProductRepository products, OrderRepository orders, SupplierOrderRepository supplierOrders, OrderItemRepository orderItems, PaymentRepository payments, CurrentUser current, OrderStatusHistoryService history, ApplicationEventPublisher events, PayOSPaymentProvider payOSProvider, PaymentAvailability paymentAvailability) { this.cart = cart; this.products = products; this.orders = orders; this.supplierOrders = supplierOrders; this.orderItems = orderItems; this.payments = payments; this.current = current; this.history = history; this.events = events; this.payOSProvider = payOSProvider; this.paymentAvailability = paymentAvailability; }
     @Transactional public OrderView checkout(CheckoutRequest request) {
         if (request.fullName() == null || request.fullName().isBlank() || request.phone() == null || !request.phone().matches("0[0-9]{9}") || request.address() == null || request.address().isBlank()) throw BusinessException.bad("INVALID_SHIPPING", "Thông tin giao hàng không hợp lệ");
         String method = request.paymentMethod() == null ? "" : request.paymentMethod().toUpperCase(); if (Arrays.stream(PaymentMethod.values()).noneMatch(value -> value.name().equals(method))) throw BusinessException.bad("INVALID_PAYMENT_METHOD", "Phương thức thanh toán không hợp lệ");
+        paymentAvailability.requireConfigured(method);
         UserAccount user = current.get(); List<CartItem> items = cart.findByUserId(user.getId()); if (items.isEmpty()) throw BusinessException.bad("EMPTY_CART", "Giỏ hàng đang trống");
         Map<Long, Product> locked = new HashMap<>();
         for (Long id : items.stream().map(item -> item.getProduct().getId()).distinct().sorted().toList()) locked.put(id, products.lockById(id).orElseThrow(() -> BusinessException.missing("Sản phẩm")));

@@ -26,7 +26,7 @@ public class SecurityConfig {
     @Bean SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http.csrf(csrf -> csrf.ignoringRequestMatchers("/api/payments/vnpay/ipn", "/api/payments/vnpay/return", "/api/payments/payos/webhook")).cors(cors -> {}).sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/api/auth/csrf", "/api/auth/register", "/api/auth/login", "/api/auth/email/**", "/api/auth/password/**", "/api/payments/vnpay/ipn", "/api/payments/vnpay/return", "/api/payments/payos/webhook", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/actuator/health").permitAll()
+                .requestMatchers("/", "/api/auth/csrf", "/api/auth/register", "/api/auth/login", "/api/auth/email/**", "/api/auth/password/**", "/api/payments/methods", "/api/payments/vnpay/ipn", "/api/payments/vnpay/return", "/api/payments/payos/webhook", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/actuator/health").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories", "/api/suppliers/**", "/api/trace/**").permitAll()
                 .requestMatchers("/api/partner/**").hasRole("PARTNER")
                 .requestMatchers("/api/manager/**").hasRole("MANAGER")

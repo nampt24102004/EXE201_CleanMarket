@@ -97,6 +97,7 @@ function AppContent() {
   const [quantity, setQuantity] = useState(1)
   const [customerInfo, setCustomerInfo] = useState(blankCustomer)
   const [paymentMethod, setPaymentMethod] = useState('cod')
+  const [availablePayments, setAvailablePayments] = useState({ cod: true, payos: false, vnpay: false })
   const [validationErrors, setValidationErrors] = useState([])
   const [placedOrder, setPlacedOrder] = useState(null)
   const [catalogLoading, setCatalogLoading] = useState(true)
@@ -154,6 +155,11 @@ function AppContent() {
 
   useEffect(() => { void Promise.resolve().then(loadCatalog) }, [loadCatalog])
   useEffect(() => {
+    api.get('/api/payments/methods').then(setAvailablePayments).catch(() => {
+      setAvailablePayments({ cod: true, payos: false, vnpay: false })
+    })
+  }, [])
+  useEffect(() => {
     void Promise.resolve().then(() => {
       if (user?.role === 'USER' && products.length) {
         loadCart()
@@ -206,6 +212,7 @@ function AppContent() {
     if (!/^0\d{9}$/.test(customerInfo.phone.trim())) errors.push('Vui lòng nhập số điện thoại gồm 10 chữ số, bắt đầu bằng 0.')
     if (!customerInfo.address.trim()) errors.push('Vui lòng nhập địa chỉ giao hàng.')
     if (!paymentMethod) errors.push('Vui lòng chọn phương thức thanh toán.')
+    if (paymentMethod && !availablePayments[paymentMethod]) errors.push('Phương thức thanh toán này hiện chưa khả dụng.')
     if (!cartItems.length) errors.push('Giỏ hàng của bạn đang trống.')
     setValidationErrors(errors)
     if (errors.length) return
@@ -245,7 +252,7 @@ function AppContent() {
   const protect = (roles, element) => <ProtectedRoute roles={roles}>{element}</ProtectedRoute>
 
   return <div className="app-shell"><Header cartCount={cartItems.length} /><div className="page-spacer">
-    {apiError && <Container className="pt-3"><Alert variant="danger" dismissible onClose={() => setApiError('')}><strong>Lỗi kết nối API:</strong> {apiError}</Alert></Container>}
+    {apiError && <Container className="pt-3"><Alert variant="danger" dismissible onClose={() => setApiError('')}><strong>Không thể hoàn tất yêu cầu:</strong> {apiError}</Alert></Container>}
     {catalogLoading ? <Container className="py-5 text-center"><Spinner animation="border" variant="success" /><div className="mt-2">Đang tải dữ liệu từ backend...</div></Container> : <Routes>
       <Route path="/" element={<HomePage products={products} onSelectProduct={selectProduct} onAddToCart={addToCart} onOpenProducts={() => navigate('/products')} />} />
       <Route path="/products" element={<ProductsPage products={products} onSelectProduct={selectProduct} onAddToCart={addToCart} />} />
@@ -255,7 +262,7 @@ function AppContent() {
       <Route path="/trace/:traceCode" element={<TracePage />} />
       <Route path="/login" element={<AuthPage />} /><Route path="/register" element={<AuthPage registerMode />} /><Route path="/verify-email" element={<VerifyEmailPage />} /><Route path="/forgot-password" element={<ForgotPasswordPage />} /><Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/cart" element={<CartPage cartItems={cartItems} onUpdateQuantity={updateCart} onRemoveItem={removeCartItem} onCheckout={goCheckout} onOpenProducts={() => navigate('/products')} />} />
-      <Route path="/checkout" element={protect(['USER'], cartItems.length ? <CheckoutPage cartItems={cartItems} customerInfo={customerInfo} paymentMethod={paymentMethod} validationErrors={validationErrors} onCustomerInfoChange={setCustomerInfo} onPaymentMethodChange={setPaymentMethod} onConfirmOrder={confirmOrder} /> : <Navigate to="/cart" replace />)} />
+      <Route path="/checkout" element={protect(['USER'], cartItems.length ? <CheckoutPage cartItems={cartItems} customerInfo={customerInfo} paymentMethod={paymentMethod} availablePayments={availablePayments} validationErrors={validationErrors} onCustomerInfoChange={setCustomerInfo} onPaymentMethodChange={setPaymentMethod} onConfirmOrder={confirmOrder} /> : <Navigate to="/cart" replace />)} />
       <Route path="/order-success" element={protect(['USER'], placedOrder ? <OrderSuccessPage order={placedOrder} onBackHome={() => navigate('/orders')} /> : <Navigate to="/orders" replace />)} />
       <Route path="/payment-result" element={protect(['USER'], <PaymentResultPage orders={orders} />)} />
       <Route path="/payment/payos" element={protect(['USER'], <PayOSPaymentPage />)} />

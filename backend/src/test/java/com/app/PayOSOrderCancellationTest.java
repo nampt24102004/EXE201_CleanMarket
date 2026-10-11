@@ -13,6 +13,7 @@ import com.app.features.orders.repository.SupplierOrderRepository;
 import com.app.features.orders.service.OrderStatusHistoryService;
 import com.app.features.orders.serviceimpl.OrderServiceImpl;
 import com.app.features.payments.entity.Payment;
+import com.app.features.payments.config.PaymentAvailability;
 import com.app.features.payments.provider.PayOSPaymentProvider;
 import com.app.features.payments.provider.PaymentProviderDto;
 import com.app.features.payments.repository.PaymentRepository;
@@ -44,6 +45,7 @@ class PayOSOrderCancellationTest {
     @Mock OrderStatusHistoryService history;
     @Mock ApplicationEventPublisher events;
     @Mock PayOSPaymentProvider provider;
+    @Mock PaymentAvailability paymentAvailability;
 
     OrderServiceImpl service;
     UserAccount user;
@@ -54,7 +56,7 @@ class PayOSOrderCancellationTest {
 
     @BeforeEach void setup() {
         service = new OrderServiceImpl(cart, products, orders, supplierOrders, orderItems, payments,
-            current, history, events, provider);
+            current, history, events, provider, paymentAvailability);
         user = new UserAccount(); user.setId(10L);
         order = new MarketOrder(); order.setId(100L); order.setUser(user); order.setOrderCode("CM100");
         order.setStatus("PENDING_PAYMENT"); order.setPaymentMethod("PAYOS"); order.setTotalAmount(new BigDecimal("2000"));

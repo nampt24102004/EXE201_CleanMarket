@@ -14,15 +14,19 @@ export default function PayOSPaymentPage({ returnMode = false }) {
   const [payment, setPayment] = useState(location.state?.payment || null)
   const [status, setStatus] = useState(null)
   const [error, setError] = useState('')
+  const [createFailed, setCreateFailed] = useState(false)
   const startedAt = useRef(null)
 
   useEffect(() => {
     if (!orderId || returnMode || payment) return
-    api.post('/api/payments/payos/create', { orderId }).then(setPayment).catch((caught) => setError(caught.message))
+    api.post('/api/payments/payos/create', { orderId }).then(setPayment).catch((caught) => {
+      setCreateFailed(true)
+      setError(caught.message)
+    })
   }, [orderId, payment, returnMode])
 
   useEffect(() => {
-    if (!orderId) return undefined
+    if (!orderId || (createFailed && !payment)) return undefined
     if (startedAt.current === null) startedAt.current = Date.now()
     let active = true
     let timer
@@ -41,16 +45,17 @@ export default function PayOSPaymentPage({ returnMode = false }) {
     }
     poll()
     return () => { active = false; if (timer) window.clearTimeout(timer) }
-  }, [orderId])
+  }, [orderId, createFailed, payment])
 
   if (!orderId) return <Container className="py-5"><Alert variant="danger">Thiếu mã đơn hàng để kiểm tra thanh toán.</Alert></Container>
   const paid = status?.paymentStatus === 'PAID'
   const failed = ['FAILED', 'CANCELLED'].includes(status?.paymentStatus)
-  const heading = paid ? 'Thanh toán thành công' : failed ? 'Thanh toán chưa hoàn tất' : 'Đang chờ thanh toán...'
+  const heading = paid ? 'Thanh toán thành công' : failed ? 'Thanh toán chưa hoàn tất' : createFailed ? 'Chưa thể bắt đầu thanh toán' : 'Đang chờ thanh toán...'
 
   return <Container className="py-5"><Card className="detail-card border-0 p-3 p-md-5 mx-auto" style={{ maxWidth: 760 }}><Stack gap={4}>
-    <div className="text-center"><div className={paid ? 'success-icon mx-auto mb-3' : 'hero-kicker mb-2'}>{paid ? '✓' : 'CleanMarket'}</div><h1 className="section-title">{heading}</h1>{!paid && !failed && <p className="text-secondary">Hệ thống tự kiểm tra trạng thái mỗi 2,5 giây. Chỉ webhook payOS đã xác minh mới xác nhận thành công.</p>}</div>
+    <div className="text-center"><div className={paid ? 'success-icon mx-auto mb-3' : 'hero-kicker mb-2'}>{paid ? '✓' : 'CleanMarket'}</div><h1 className="section-title">{heading}</h1>{!paid && !failed && !createFailed && <p className="text-secondary">Hệ thống tự kiểm tra trạng thái mỗi 2,5 giây. Chỉ webhook payOS đã xác minh mới xác nhận thành công.</p>}</div>
     {error && <Alert variant="warning">{error}</Alert>}
+    {createFailed && <Alert variant="info">Đơn hàng vẫn đang chờ thanh toán. Bạn có thể mở chi tiết đơn để thử lại hoặc hủy đơn.</Alert>}
     {status && <div className="soft-panel p-4"><div className="d-flex justify-content-between mb-2"><span>Mã đơn</span><strong>{status.orderCode}</strong></div><div className="d-flex justify-content-between mb-2"><span>Tổng tiền</span><strong>{formatCurrency(Number(status.amount))}</strong></div><div className="d-flex justify-content-between"><span>Trạng thái</span><Badge bg={paid ? 'success' : failed ? 'danger' : 'warning'}>{status.paymentStatus}</Badge></div></div>}
     {!returnMode && !paid && !failed && payment?.qrCode && <div className="qr-panel text-center"><QRCodeSVG value={payment.qrCode} size={240} level="M" includeMargin /><p className="mt-3 mb-0 text-secondary">Quét mã bằng ứng dụng ngân hàng hỗ trợ VietQR</p></div>}
     {!returnMode && !paid && !failed && payment?.checkoutUrl && <Button as="a" href={payment.checkoutUrl} target="_blank" rel="noreferrer" className="primary-btn py-3">Mở trang thanh toán payOS</Button>}
