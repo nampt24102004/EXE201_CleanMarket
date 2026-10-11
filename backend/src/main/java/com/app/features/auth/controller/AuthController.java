@@ -6,7 +6,6 @@ import com.app.features.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -39,7 +38,11 @@ public class AuthController {
     private ApiResponse<AuthResult> signIn(ApiResponse<AuthResult> result, HttpServletRequest request, HttpServletResponse response) {
         if (request.getSession(false) != null) request.changeSessionId();
         UserView user = result.data().user();
-        var authentication = new UsernamePasswordAuthenticationToken(user.email(), null, List.of(new SimpleGrantedAuthority("ROLE_" + user.role())));
+        var authorities = user.roles().stream()
+            .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
+            .distinct()
+            .toList();
+        var authentication = new UsernamePasswordAuthenticationToken(user.email(), null, authorities);
         var context = SecurityContextHolder.createEmptyContext(); context.setAuthentication(authentication); SecurityContextHolder.setContext(context);
         new CsrfAuthenticationStrategy(new HttpSessionCsrfTokenRepository()).onAuthentication(authentication, request, response);
         new HttpSessionSecurityContextRepository().saveContext(context, request, response);

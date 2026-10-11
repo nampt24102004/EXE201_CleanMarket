@@ -1,4 +1,6 @@
 -- CleanMarket demo data for MySQL 8 / Hibernate schema.
+-- Geographic scope: Hoa Lac - Thach That - Ba Vi, Ha Noi.
+-- Supplier/farm names and certificates in this seed file are DEMO DATA for the academic project.
 -- Safe to run repeatedly after the backend has created its tables; existing demo rows are preserved.
 -- Do not enable DEMO_SEED or configure BOOTSTRAP_ADMIN_EMAIL for the same demo accounts.
 -- All dates for produce batches are relative to the day this file is imported.
@@ -57,19 +59,19 @@ INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES
 
 -- Dia chi giao hang.
 INSERT IGNORE INTO addresses (id, user_id, recipient_name, phone, address_line, is_default, created_at, updated_at) VALUES
-  (401, 101, 'Nguyễn An', '0912345678', '12 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (402, 101, 'Nguyễn An', '0912345678', '25 Trần Hưng Đạo, Đà Lạt, Lâm Đồng', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (401, 101, 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (402, 101, 'Nguyễn An', '0912345678', 'Thị trấn Tây Đằng, Ba Vì, Hà Nội', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Ho so nha cung cap: hai duyet, mot cho duyet.
-INSERT IGNORE INTO suppliers (id, owner_id, name, location, description, status, document_url, created_at, updated_at) VALUES
-  (501, 102, 'Nông trại Mùa Xanh', 'Đà Lạt, Lâm Đồng', 'Rau củ canh tác tại Đà Lạt.', 'APPROVED', 'https://placehold.co/800x600?text=Supplier+Document', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (502, 103, 'Vườn Trái Ngọt', 'Cai Lậy, Tiền Giang', 'Trái cây và rau củ từ Tiền Giang.', 'APPROVED', 'https://placehold.co/800x600?text=Supplier+Document', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (503, 106, 'Hợp tác xã Tân Phú', 'Đồng Nai', 'Hồ sơ đang chờ Manager xét duyệt.', 'PENDING', 'https://placehold.co/800x600?text=Pending+Document', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT IGNORE INTO suppliers (id, owner_id, name, location, email, phone, supplier_type, description, status, document_url, created_at, updated_at) VALUES
+  (501, 102, 'Nông trại Rau sạch Hòa Lạc', 'Thạch Hòa, Thạch Thất, Hà Nội', 'partner1@cleanmarket.vn', '0912345679', 'FARM', 'Nông trại demo cung cấp rau củ canh tác tại khu vực Hòa Lạc - Thạch Thất.', 'APPROVED', 'https://placehold.co/800x600?text=Supplier+Document', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (502, 103, 'Nông trại Ba Vì Xanh', 'Ba Vì, Hà Nội', 'partner2@cleanmarket.vn', '0912345680', 'FARM', 'Nông trại demo cung cấp nông sản và trái cây có nguồn gốc tại khu vực Ba Vì, Hà Nội.', 'APPROVED', 'https://placehold.co/800x600?text=Supplier+Document', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (503, 106, 'Hợp tác xã Nông nghiệp Thạch Thất', 'Thạch Thất, Hà Nội', 'applicant@cleanmarket.vn', '0912345683', 'COOPERATIVE', 'Nhà cung cấp demo tại khu vực Thạch Thất, hồ sơ đang chờ Manager xét duyệt.', 'PENDING', 'https://placehold.co/800x600?text=Pending+Document', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Tai lieu nha cung cap.
-INSERT IGNORE INTO supplier_documents (id, supplier_id, type, file_url, status, expiry_date, created_at, updated_at) VALUES
-  (601, 501, 'BUSINESS_LICENSE', 'https://placehold.co/800x600?text=Business+License', 'APPROVED', DATE_ADD(CURRENT_DATE, INTERVAL 1 YEAR), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (602, 503, 'BUSINESS_LICENSE', 'https://placehold.co/800x600?text=Pending+License', 'PENDING', DATE_ADD(CURRENT_DATE, INTERVAL 1 YEAR), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT IGNORE INTO supplier_documents (id, supplier_id, type, document_name, original_file_name, file_url, status, expiry_date, uploaded_at, created_at, updated_at) VALUES
+  (601, 501, 'BUSINESS_LICENSE', 'Giấy phép kinh doanh', 'business-license-demo.pdf', 'https://placehold.co/800x600?text=Business+License', 'APPROVED', DATE_ADD(CURRENT_DATE, INTERVAL 1 YEAR), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (602, 503, 'BUSINESS_LICENSE', 'Giấy phép kinh doanh', 'pending-license-demo.pdf', 'https://placehold.co/800x600?text=Pending+License', 'PENDING', DATE_ADD(CURRENT_DATE, INTERVAL 1 YEAR), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- CategoryBootstrap có thể đã tạo bốn danh mục này khi ứng dụng khởi động.
 INSERT IGNORE INTO categories (name, slug, active, created_at, updated_at)
@@ -93,26 +95,26 @@ UPDATE categories SET slug = CASE name
 WHERE name IN ('Rau lá', 'Củ quả', 'Trái cây', 'Thực phẩm khác') AND slug IS NULL;
 
 -- San pham public va mot san pham cho Manager duyet.
-INSERT IGNORE INTO products (id, supplier_id, category_id, name, description, price, unit, image_url, stock, approval_status, status, certificate_no, version, created_at, updated_at) VALUES
-  (701, 501, (SELECT id FROM categories WHERE name = 'Củ quả'), 'Cà rốt Đà Lạt', 'Cà rốt tươi từ nông trại Mùa Xanh.', 25000, 'kg', 'https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=900&q=80', 100, 'APPROVED', 'ACTIVE', 'CM-CERT-001', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (702, 501, (SELECT id FROM categories WHERE name = 'Rau lá'), 'Rau cải xanh', 'Rau cải xanh thu hoạch mỗi ngày.', 15000, 'kg', 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=900&q=80', 80, 'APPROVED', 'ACTIVE', 'CM-CERT-002', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (703, 502, (SELECT id FROM categories WHERE name = 'Củ quả'), 'Cà chua sạch', 'Cà chua chín tự nhiên.', 30000, 'kg', 'https://images.unsplash.com/photo-1546094096-0df4bcaaa337?auto=format&fit=crop&w=900&q=80', 60, 'APPROVED', 'ACTIVE', 'CM-CERT-003', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (704, 502, (SELECT id FROM categories WHERE name = 'Trái cây'), 'Táo xanh', 'Táo xanh giòn, vị ngọt nhẹ.', 45000, 'kg', 'https://images.unsplash.com/photo-1567306226416-28f0efdc88ce?auto=format&fit=crop&w=900&q=80', 40, 'APPROVED', 'ACTIVE', 'CM-CERT-004', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (705, 502, (SELECT id FROM categories WHERE name = 'Rau lá'), 'Rau xà lách mới', 'Sản phẩm đang chờ Manager duyệt.', 22000, 'kg', 'https://images.unsplash.com/photo-1556801712-76c8eb07bbc9?auto=format&fit=crop&w=900&q=80', 20, 'PENDING_APPROVAL', 'INACTIVE', NULL, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT IGNORE INTO products (id, supplier_id, category_id, name, description, price, unit, image_url, stock, origin, approval_status, status, certificate_no, version, created_at, updated_at) VALUES
+  (701, 501, (SELECT id FROM categories WHERE name = 'Củ quả'), 'Cà rốt', 'Cà rốt tươi từ vùng trồng Hòa Lạc - Thạch Thất, Hà Nội.', 25000, 'kg', 'https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=900&q=80', 100, 'Thạch Hòa, Thạch Thất, Hà Nội', 'APPROVED', 'ACTIVE', 'CM-CERT-001', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (702, 501, (SELECT id FROM categories WHERE name = 'Rau lá'), 'Rau cải xanh', 'Rau cải xanh thu hoạch trong ngày tại khu vực Hòa Lạc - Thạch Thất.', 15000, 'kg', 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=900&q=80', 80, 'Thạch Hòa, Thạch Thất, Hà Nội', 'APPROVED', 'ACTIVE', 'CM-CERT-002', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (703, 502, (SELECT id FROM categories WHERE name = 'Củ quả'), 'Cà chua', 'Cà chua từ vùng trồng Ba Vì, Hà Nội.', 30000, 'kg', 'https://images.unsplash.com/photo-1546094096-0df4bcaaa337?auto=format&fit=crop&w=900&q=80', 60, 'Ba Vì, Hà Nội', 'APPROVED', 'ACTIVE', 'CM-CERT-003', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (704, 502, (SELECT id FROM categories WHERE name = 'Trái cây'), 'Bưởi', 'Bưởi từ khu vực Ba Vì, Hà Nội, vị thanh và mọng nước.', 45000, 'kg', 'https://placehold.co/900x700?text=Buoi+Ba+Vi', 40, 'Ba Vì, Hà Nội', 'APPROVED', 'ACTIVE', 'CM-CERT-004', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (705, 502, (SELECT id FROM categories WHERE name = 'Rau lá'), 'Rau xà lách', 'Rau xà lách từ khu vực Ba Vì, Hà Nội, đang chờ Manager duyệt.', 22000, 'kg', 'https://images.unsplash.com/photo-1556801712-76c8eb07bbc9?auto=format&fit=crop&w=900&q=80', 20, 'Ba Vì, Hà Nội', 'PENDING', 'INACTIVE', NULL, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Anh san pham bo sung.
 INSERT IGNORE INTO product_images (id, product_id, image_url, sort_order, created_at, updated_at) VALUES
   (801, 701, 'https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=900&q=80+1', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (802, 702, 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=900&q=80', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (803, 703, 'https://images.unsplash.com/photo-1546094096-0df4bcaaa337?auto=format&fit=crop&w=900&q=80+1', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (804, 704, 'https://images.unsplash.com/photo-1567306226416-28f0efdc88ce?auto=format&fit=crop&w=900&q=80', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (804, 704, 'https://placehold.co/900x700?text=Buoi+Ba+Vi', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Lo san pham va traceCode de mo trang QR.
 INSERT IGNORE INTO product_batches (id, product_id, batch_code, trace_code, farm_name, origin, harvest_date, packaging_date, expiry_date, quantity, certificate_no, status, created_at, updated_at) VALUES
-  (901, 701, 'CM-DEMO-CARROT', 'CMDEMO-CARROT-001', 'Nông trại Mùa Xanh', 'Đà Lạt, Lâm Đồng', DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY), DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), 100, 'CM-CERT-001', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (902, 702, 'CM-DEMO-LETTUCE', 'CMDEMO-LETTUCE-001', 'Nông trại Mùa Xanh', 'Đà Lạt, Lâm Đồng', DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY), DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), 80, 'CM-CERT-002', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (903, 703, 'CM-DEMO-TOMATO', 'CMDEMO-TOMATO-001', 'Vườn Trái Ngọt', 'Cai Lậy, Tiền Giang', DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY), DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), 60, 'CM-CERT-003', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (904, 704, 'CM-DEMO-APPLE', 'CMDEMO-APPLE-001', 'Vườn Trái Ngọt', 'Cai Lậy, Tiền Giang', DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY), DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), 40, 'CM-CERT-004', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (901, 701, 'CM-HL-CARROT', 'CM-HL-CARROT-001', 'Nông trại Rau sạch Hòa Lạc', 'Thạch Hòa, Thạch Thất, Hà Nội', DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY), DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), 100, 'CM-CERT-001', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (902, 702, 'CM-HL-GREENS', 'CM-HL-GREENS-001', 'Nông trại Rau sạch Hòa Lạc', 'Thạch Hòa, Thạch Thất, Hà Nội', DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY), DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), 80, 'CM-CERT-002', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (903, 703, 'CM-BV-TOMATO', 'CM-BV-TOMATO-001', 'Nông trại Ba Vì Xanh', 'Ba Vì, Hà Nội', DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY), DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), 60, 'CM-CERT-003', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (904, 704, 'CM-BV-POMELO', 'CM-BV-POMELO-001', 'Nông trại Ba Vì Xanh', 'Ba Vì, Hà Nội', DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY), DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), 40, 'CM-CERT-004', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Chung nhan theo supplier hoac batch.
 INSERT IGNORE INTO certifications (id, supplier_id, product_id, batch_id, type, certificate_no, issued_at, expiry_at, file_url, status, created_at, updated_at) VALUES
@@ -121,9 +123,9 @@ INSERT IGNORE INTO certifications (id, supplier_id, product_id, batch_id, type, 
 
 -- Timeline truy xuat nguon goc.
 INSERT IGNORE INTO trace_events (id, batch_id, event_type, event_time, location, description, actor_user_id, created_at, updated_at) VALUES
-  (1101, 901, 'HARVESTED', CURRENT_TIMESTAMP, 'Đà Lạt', 'Thu hoạch cà rốt.', 102, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1102, 901, 'PACKAGED', CURRENT_TIMESTAMP, 'Đà Lạt', 'Đóng gói tại nông trại.', 102, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1103, 903, 'QUALITY_CHECKED', CURRENT_TIMESTAMP, 'Tiền Giang', 'Kiểm tra chất lượng cà chua.', 103, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1101, 901, 'HARVESTED', CURRENT_TIMESTAMP, 'Thạch Hòa, Thạch Thất, Hà Nội', 'Thu hoạch cà rốt tại vùng trồng Hòa Lạc.', 102, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1102, 901, 'PACKAGED', CURRENT_TIMESTAMP, 'Hòa Lạc, Thạch Thất, Hà Nội', 'Sơ chế và đóng gói tại khu vực Hòa Lạc.', 102, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1103, 903, 'QUALITY_CHECKED', CURRENT_TIMESTAMP, 'Ba Vì, Hà Nội', 'Kiểm tra chất lượng cà chua tại điểm sơ chế Ba Vì.', 103, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Gio hang cho User demo.
 INSERT IGNORE INTO carts (id, user_id, created_at, updated_at) VALUES
@@ -135,10 +137,10 @@ INSERT IGNORE INTO cart_items (id, cart_id, user_id, product_id, quantity, creat
 
 -- Don da giao COD, don VNPAY cho thanh toan, don COD hai Partner, don VNPAY da thanh toan.
 INSERT IGNORE INTO orders (id, user_id, order_code, subtotal, discount, shipping_fee, total_amount, status, payment_method, full_name, phone, address, note, created_at, updated_at) VALUES
-  (1401, 101, 'CM-DEMO-COD-DELIVERED', 65000, 0, 0, 65000, 'DELIVERED', 'COD', 'Nguyễn An', '0912345678', '12 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh', 'Đơn đã giao', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1402, 101, 'CM-DEMO-VNPAY-PENDING', 30000, 0, 0, 30000, 'CREATED', 'VNPAY', 'Nguyễn An', '0912345678', '12 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh', 'Có thể gọi API tạo URL VNPAY', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1403, 101, 'CM-DEMO-MULTI-SUPPLIER', 70000, 0, 0, 70000, 'CREATED', 'COD', 'Nguyễn An', '0912345678', '12 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh', 'Một đơn, hai nhà cung cấp', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1404, 101, 'CM-DEMO-VNPAY-PAID', 60000, 5000, 0, 55000, 'PAID', 'VNPAY', 'Nguyễn An', '0912345678', '12 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh', 'Dữ liệu lịch sử có voucher', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1401, 101, 'CM-DEMO-COD-DELIVERED', 65000, 0, 0, 65000, 'DELIVERED', 'COD', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Đơn đã giao', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1402, 101, 'CM-DEMO-VNPAY-PENDING', 30000, 0, 0, 30000, 'CREATED', 'VNPAY', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Có thể gọi API tạo URL VNPAY', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1403, 101, 'CM-DEMO-MULTI-SUPPLIER', 70000, 0, 0, 70000, 'CREATED', 'COD', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Một đơn, hai nhà cung cấp', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1404, 101, 'CM-DEMO-VNPAY-PAID', 60000, 5000, 0, 55000, 'PAID', 'VNPAY', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Dữ liệu lịch sử có voucher', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Phan don theo nha cung cap.
 INSERT IGNORE INTO supplier_orders (id, order_id, supplier_id, total_amount, status, created_at, updated_at) VALUES
@@ -150,12 +152,12 @@ INSERT IGNORE INTO supplier_orders (id, order_id, supplier_id, total_amount, sta
 
 -- Snapshot san pham trong don.
 INSERT IGNORE INTO order_items (id, supplier_order_id, product_id, batch_id, product_name_snapshot, unit_price, unit, quantity, total_amount, created_at, updated_at) VALUES
-  (1601, 1501, 701, 901, 'Cà rốt Đà Lạt', 25000, 'kg', 2, 50000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1601, 1501, 701, 901, 'Cà rốt', 25000, 'kg', 2, 50000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1602, 1501, 702, 902, 'Rau cải xanh', 15000, 'kg', 1, 15000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1603, 1502, 703, 903, 'Cà chua sạch', 30000, 'kg', 1, 30000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1604, 1503, 701, 901, 'Cà rốt Đà Lạt', 25000, 'kg', 1, 25000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1605, 1504, 704, 904, 'Táo xanh', 45000, 'kg', 1, 45000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1606, 1505, 703, 903, 'Cà chua sạch', 30000, 'kg', 2, 60000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1603, 1502, 703, 903, 'Cà chua', 30000, 'kg', 1, 30000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1604, 1503, 701, 901, 'Cà rốt', 25000, 'kg', 1, 25000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1605, 1504, 704, 904, 'Bưởi', 45000, 'kg', 1, 45000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1606, 1505, 703, 903, 'Cà chua', 30000, 'kg', 2, 60000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Thanh toan COD va VNPAY.
 INSERT IGNORE INTO payments (id, order_id, provider, status, amount, txn_ref, provider_transaction_no, response_code, paid_at, created_at, updated_at) VALUES
@@ -205,11 +207,11 @@ INSERT IGNORE INTO voucher_usages (id, voucher_id, user_id, order_id, discount_a
 -- Thong bao mau.
 INSERT IGNORE INTO notifications (id, recipient_user_id, type, title, message, read_at, created_at, updated_at) VALUES
   (2601, 101, 'ORDER', 'Đơn hàng đã giao', 'Đơn CM-DEMO-COD-DELIVERED đã giao thành công.', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (2602, 104, 'SUPPLIER', 'Hồ sơ nhà cung cấp chờ duyệt', 'Hợp tác xã Tân Phú đang chờ xét duyệt.', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (2602, 104, 'SUPPLIER', 'Hồ sơ nhà cung cấp chờ duyệt', 'Hợp tác xã Nông nghiệp Thạch Thất đang chờ xét duyệt.', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Audit log mau.
 INSERT IGNORE INTO audit_logs (id, actor_user_id, action, entity_type, entity_id, detail, old_value, new_value, created_at, updated_at) VALUES
-  (2701, 104, 'SUPPLIER_APPROVED', 'Supplier', 501, 'Duyệt hồ sơ Nông trại Mùa Xanh', 'PENDING', 'APPROVED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (2701, 104, 'SUPPLIER_APPROVED', 'Supplier', 501, 'Duyệt hồ sơ Nông trại Rau sạch Hòa Lạc', 'PENDING', 'APPROVED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (2702, 103, 'PRODUCT_SUBMIT', 'Product', 705, 'Gửi sản phẩm mới chờ duyệt', 'DRAFT', 'PENDING_APPROVAL', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Cau hinh mau; chua duoc API doc.

@@ -150,3 +150,34 @@ Mở `http://localhost:5173`, đăng nhập USER, thêm sản phẩm, checkout v
 9. Checkout COD để xác nhận luồng COD vẫn hoạt động.
 
 Các secret không được commit: `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `SMTP_PASSWORD`, `DB_PASSWORD`, `JWT_SECRET`, `VNPAY_HASH_SECRET`.
+## Supplier registration, product approval và Cloudflare R2
+
+Áp dụng một lần migration database/migrations/V3__supplier_partner_product_approval.sql trên cleanmarket_db trước khi chạy phiên bản này.
+
+Các biến môi trường:
+
+    R2_ACCOUNT_ID=your_cloudflare_account_id
+    R2_ACCESS_KEY_ID=your_r2_access_key_id
+    R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
+    R2_BUCKET=cleanmarket
+    R2_PUBLIC_BASE_URL=
+    R2_PRESIGNED_GET_TTL_SECONDS=900
+    UPLOAD_MAX_FILE_SIZE_MB=10
+    UPLOAD_MAX_FILES=8
+
+Tạo bucket và S3 API token trong Cloudflare R2. Access key/secret chỉ đặt ở backend/.env hoặc environment của máy chủ. Không đưa các giá trị này vào React hoặc Git. R2_PUBLIC_BASE_URL là tùy chọn; khi bỏ trống backend cấp URL đọc có thời hạn. Giấy tờ supplier và file chứng nhận được mở bằng URL ký có thời hạn cho Manager/Admin.
+
+Luồng supplier:
+
+1. USER mở /partner/register, gửi hồ sơ và giấy tờ.
+2. Hồ sơ ở PENDING; các API /api/partner/** vẫn trả 403.
+3. MANAGER hoặc ADMIN duyệt tại /manager/suppliers hoặc /admin/suppliers.
+4. Transaction cập nhật supplier thành APPROVED, giữ role USER và thêm role PARTNER.
+5. Người dùng đăng xuất/đăng nhập lại để phiên Spring Security nhận quyền mới.
+
+Luồng product:
+
+1. PARTNER đã được duyệt tạo sản phẩm ở DRAFT.
+2. Upload ảnh/chứng nhận và gọi submit để chuyển sang PENDING.
+3. MANAGER/ADMIN duyệt sản phẩm; sản phẩm chuyển APPROVED + ACTIVE.
+4. Chứng nhận được duyệt riêng. Catalog chỉ trả chứng nhận APPROVED và chưa hết hạn.

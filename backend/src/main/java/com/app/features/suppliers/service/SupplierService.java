@@ -1,19 +1,22 @@
 package com.app.features.suppliers.service;
 
-import com.app.common.*;
-import com.app.features.suppliers.dto.SupplierControllerDto.ApplicationRequest;
-import com.app.features.suppliers.dto.SupplierControllerDto.DecisionRequest;
-import com.app.features.suppliers.dto.SupplierControllerDto.ProfileRequest;
-import com.app.features.suppliers.dto.SupplierControllerDto.SupplierView;
-import jakarta.validation.constraints.*;
-import jakarta.validation.Valid;
+import com.app.common.ApiResponse;
+import com.app.features.suppliers.dto.SupplierControllerDto.*;
 import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface SupplierService {
-    public ApiResponse<SupplierView> apply(@Valid ApplicationRequest request);
-    public ApiResponse<SupplierView> mine();
-    public ApiResponse<SupplierView> updateProfile(@Valid ProfileRequest request);
-    public ApiResponse<List<SupplierView>> pending();
-    public ApiResponse<SupplierView> approve(Long id);
-    public ApiResponse<SupplierView> reject(Long id, DecisionRequest request);
+    ApiResponse<SupplierView> apply(ApplicationRequest request);
+    ApiResponse<SupplierView> mine();
+    ApiResponse<SupplierView> updateApplication(ProfileRequest request);
+    ApiResponse<SupplierView> updateProfile(ProfileRequest request);
+    ApiResponse<DocumentView> uploadDocument(String type, String documentName, MultipartFile file);
+    ApiResponse<DocumentView> uploadPartnerDocument(String type, String documentName, MultipartFile file);
+    ApiResponse<SupplierView> resubmit();
+    ApiResponse<List<SupplierView>> list(String status);
+    ApiResponse<SupplierView> detail(Long id);
+    ApiResponse<SupplierView> approve(Long id);
+    ApiResponse<SupplierView> reject(Long id, DecisionRequest request);
+    ApiResponse<SupplierView> approveDocument(Long supplierId, Long documentId);
+    ApiResponse<SupplierView> rejectDocument(Long supplierId, Long documentId, DecisionRequest request);
 }

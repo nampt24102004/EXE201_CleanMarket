@@ -1,5 +1,2 @@
 package com.app.features.suppliers.enums;
-
-public enum SupplierStatus {
-    PENDING, APPROVED, REJECTED
-}
+public enum SupplierStatus { PENDING, APPROVED, REJECTED, SUSPENDED }
