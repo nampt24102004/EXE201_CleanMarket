@@ -150,7 +150,7 @@ Mở `http://localhost:5173`, đăng nhập USER, thêm sản phẩm, checkout v
 9. Checkout COD để xác nhận luồng COD vẫn hoạt động.
 
 Các secret không được commit: `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `SMTP_PASSWORD`, `DB_PASSWORD`, `JWT_SECRET`, `VNPAY_HASH_SECRET`.
-## Supplier registration, product approval và Cloudflare R2
+## Supplier registration, product approval và object storage
 
 Áp dụng một lần migration database/migrations/V3__supplier_partner_product_approval.sql trên cleanmarket_db trước khi chạy phiên bản này.
 
@@ -166,6 +166,14 @@ Các biến môi trường:
     UPLOAD_MAX_FILES=8
 
 Tạo bucket và S3 API token trong Cloudflare R2. Access key/secret chỉ đặt ở backend/.env hoặc environment của máy chủ. Không đưa các giá trị này vào React hoặc Git. R2_PUBLIC_BASE_URL là tùy chọn; khi bỏ trống backend cấp URL đọc có thời hạn. Giấy tờ supplier và file chứng nhận được mở bằng URL ký có thời hạn cho Manager/Admin.
+
+Trên Google Cloud Run có thể dùng Cloud Storage mà không tạo access key dài hạn:
+
+    STORAGE_PROVIDER=gcs
+    STORAGE_BUCKET=your-private-bucket
+    STORAGE_SIGNER_SERVICE_ACCOUNT=your-cloud-run-service-account@your-project.iam.gserviceaccount.com
+
+Service account cần quyền ghi object vào bucket và quyền `iam.serviceAccounts.signBlob` trên chính nó để tạo URL đọc có thời hạn. Chế độ `r2` vẫn là mặc định để giữ tương thích cấu hình cũ.
 
 Luồng supplier:
 
