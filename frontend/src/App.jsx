@@ -22,6 +22,9 @@ import PortalPage from './pages/portal/PortalPage'
 import { MyOrdersPage, OrderDetailPage, PaymentResultPage, ProfilePage } from './pages/user/UserPages'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PayOSPaymentPage from './pages/payment/PayOSPaymentPage'
+import SupplierRegistrationPage from './pages/supplier-registration/SupplierRegistrationPage'
+import { PartnerProductFormPage, PartnerProductsPage } from './pages/partner-products/PartnerProductPages'
+import { ApprovalDetailPage, ApprovalListPage } from './pages/approvals/ApprovalPages'
 import { api } from './services/apiClient'
 
 const blankCustomer = { fullName: '', phone: '', email: '', address: '', note: '' }
@@ -89,7 +92,8 @@ function ProductRoute({ products, quantity, setQuantity, onAddToCart, onBuyNow }
 function AppContent() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user } = useAuth()
+  const { user, hasRole } = useAuth()
+  const isPartner = hasRole('PARTNER')
   const [products, setProducts] = useState([])
   const [suppliers, setSuppliers] = useState([])
   const [cartItems, setCartItems] = useState([])
@@ -103,8 +107,9 @@ function AppContent() {
   const [apiError, setApiError] = useState('')
 
   const showError = useCallback((caught) => {
+    if (isPartner && caught?.status === 403) return
     setApiError([caught?.message || 'Không thể kết nối backend.', ...(caught?.errors || [])].join(' '))
-  }, [])
+  }, [isPartner])
 
   const loadCatalog = useCallback(async () => {
     try {
@@ -120,7 +125,7 @@ function AppContent() {
   }, [showError])
 
   const loadCart = useCallback(async () => {
-    if (user?.role !== 'USER') return setCartItems([])
+    if (!hasRole('USER')) return setCartItems([])
     try {
       const data = await api.get('/api/cart')
       setCartItems(data.map((item) => ({
@@ -132,10 +137,10 @@ function AppContent() {
         },
       })))
     } catch (caught) { showError(caught) }
-  }, [products, showError, user?.role])
+  }, [products, showError, hasRole])
 
   const loadOrders = useCallback(async () => {
-    if (user?.role !== 'USER') return setOrders([])
+    if (!hasRole('USER')) return setOrders([])
     try {
       const data = await api.get('/api/orders')
       const normalized = data.map((order) => normalizeOrder(order, products, user.email))
@@ -150,28 +155,28 @@ function AppContent() {
       }))
       setOrders(reconciled)
     } catch (caught) { showError(caught) }
-  }, [products, showError, user])
+  }, [products, showError, user, hasRole])
 
   useEffect(() => { void Promise.resolve().then(loadCatalog) }, [loadCatalog])
   useEffect(() => {
     void Promise.resolve().then(() => {
-      if (user?.role === 'USER' && products.length) {
+      if (hasRole('USER') && products.length) {
         loadCart()
         loadOrders()
         setCustomerInfo((current) => ({ ...current, fullName: current.fullName || user.name, email: user.email }))
-      } else if (!user || user.role !== 'USER') {
+      } else if (!user || !hasRole('USER')) {
         setCartItems([])
         setOrders([])
       }
     })
-  }, [loadCart, loadOrders, products.length, user])
+  }, [loadCart, loadOrders, products.length, user, hasRole])
   useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
 
   const selectProduct = (product) => { setQuantity(stepFor(product)); navigate(`/products/${product.id}`) }
 
   const addToCart = async (product, value = stepFor(product)) => {
     if (!user) return navigate('/login', { state: { from: location.pathname } })
-    if (user.role !== 'USER') return setApiError('Chỉ tài khoản USER có thể mua hàng.')
+    if (!hasRole('USER')) return setApiError('Chỉ tài khoản USER có thể mua hàng.')
     try {
       await api.post('/api/cart/items', { productId: product.id, quantity: normalizeQuantity(product, value) })
       await loadCart()
@@ -197,8 +202,8 @@ function AppContent() {
     } catch (caught) { showError(caught) }
   }
 
-  const goCheckout = () => navigate(user?.role === 'USER' ? '/checkout' : '/login', { state: { from: '/checkout' } })
-  const buyNow = async (product, value) => { await addToCart(product, value); if (user?.role === 'USER') navigate('/checkout') }
+  const goCheckout = () => navigate(hasRole('USER') ? '/checkout' : '/login', { state: { from: '/checkout' } })
+  const buyNow = async (product, value) => { await addToCart(product, value); if (hasRole('USER')) navigate('/checkout') }
 
   const confirmOrder = async () => {
     const errors = []
@@ -245,7 +250,7 @@ function AppContent() {
   const protect = (roles, element) => <ProtectedRoute roles={roles}>{element}</ProtectedRoute>
 
   return <div className="app-shell"><Header cartCount={cartItems.length} /><div className="page-spacer">
-    {apiError && <Container className="pt-3"><Alert variant="danger" dismissible onClose={() => setApiError('')}><strong>Lỗi kết nối API:</strong> {apiError}</Alert></Container>}
+    {apiError && !(isPartner && apiError === 'Bạn không có quyền truy cập') && <Container className="pt-3"><Alert variant="danger" dismissible onClose={() => setApiError('')}><strong>Lỗi API:</strong> {apiError}</Alert></Container>}
     {catalogLoading ? <Container className="py-5 text-center"><Spinner animation="border" variant="success" /><div className="mt-2">Đang tải dữ liệu từ backend...</div></Container> : <Routes>
       <Route path="/" element={<HomePage products={products} onSelectProduct={selectProduct} onAddToCart={addToCart} onOpenProducts={() => navigate('/products')} />} />
       <Route path="/products" element={<ProductsPage products={products} onSelectProduct={selectProduct} onAddToCart={addToCart} />} />
@@ -264,6 +269,18 @@ function AppContent() {
       <Route path="/orders" element={protect(['USER'], <MyOrdersPage orders={orders} />)} />
       <Route path="/orders/:orderCode" element={protect(['USER'], <OrderDetailPage orders={orders} onOrdersChanged={loadOrders} />)} />
       <Route path="/profile" element={protect(['USER'], <ProfilePage />)} />
+      <Route path="/partner/register" element={protect(['USER'], <SupplierRegistrationPage />)} />
+      <Route path="/partner/products" element={protect(['PARTNER'], <PartnerProductsPage />)} />
+      <Route path="/partner/products/create" element={protect(['PARTNER'], <PartnerProductFormPage />)} />
+      <Route path="/partner/products/:id/edit" element={protect(['PARTNER'], <PartnerProductFormPage />)} />
+      <Route path="/manager/suppliers" element={protect(['MANAGER','ADMIN'], <ApprovalListPage kind="suppliers" />)} />
+      <Route path="/manager/suppliers/:id" element={protect(['MANAGER','ADMIN'], <ApprovalDetailPage kind="suppliers" />)} />
+      <Route path="/manager/products" element={protect(['MANAGER','ADMIN'], <ApprovalListPage kind="products" />)} />
+      <Route path="/manager/products/:id" element={protect(['MANAGER','ADMIN'], <ApprovalDetailPage kind="products" />)} />
+      <Route path="/admin/suppliers" element={protect(['ADMIN'], <ApprovalListPage kind="suppliers" base="/admin" />)} />
+      <Route path="/admin/suppliers/:id" element={protect(['ADMIN'], <ApprovalDetailPage kind="suppliers" base="/admin" />)} />
+      <Route path="/admin/products" element={protect(['ADMIN'], <ApprovalListPage kind="products" base="/admin" />)} />
+      <Route path="/admin/products/:id" element={protect(['ADMIN'], <ApprovalDetailPage kind="products" base="/admin" />)} />
       <Route path="/partner" element={protect(['PARTNER'], <PortalPage role="PARTNER" onCatalogChanged={loadCatalog} />)} /><Route path="/partner/:section" element={protect(['PARTNER'], <PortalPage role="PARTNER" onCatalogChanged={loadCatalog} />)} />
       <Route path="/manager" element={protect(['MANAGER'], <PortalPage role="MANAGER" onCatalogChanged={loadCatalog} />)} /><Route path="/manager/:section" element={protect(['MANAGER'], <PortalPage role="MANAGER" onCatalogChanged={loadCatalog} />)} />
       <Route path="/admin" element={protect(['ADMIN'], <PortalPage role="ADMIN" onCatalogChanged={loadCatalog} />)} /><Route path="/admin/:section" element={protect(['ADMIN'], <PortalPage role="ADMIN" onCatalogChanged={loadCatalog} />)} />

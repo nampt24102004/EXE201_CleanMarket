@@ -25,15 +25,15 @@ public class DemoDataSeeder {
         return args -> {
             if (password.length() < 8) throw new IllegalStateException("DEMO_PASSWORD must contain at least 8 characters when DEMO_SEED=true");
             account(users, passwords, "user@cleanmarket.vn", "Khách hàng Demo", "USER", password);
-            UserAccount partner = account(users, passwords, "partner@cleanmarket.vn", "Nông trại Mùa Xanh", "PARTNER", password);
+            UserAccount partner = account(users, passwords, "partner@cleanmarket.vn", "Nông trại Rau sạch Hòa Lạc", "PARTNER", password);
             account(users, passwords, "manager@cleanmarket.vn", "Quản lý Demo", "MANAGER", password);
             account(users, passwords, "admin@cleanmarket.vn", "Quản trị Demo", "ADMIN", password);
             Supplier supplier = suppliers.findByOwnerId(partner.getId()).orElseGet(() -> {
-                Supplier s = new Supplier(); s.setOwner(partner); s.setName("Nông trại Mùa Xanh"); s.setLocation("Lâm Đồng"); s.setDescription("Nông sản sạch từ trang trại."); s.setStatus("APPROVED"); return suppliers.save(s);
+                Supplier s = new Supplier(); s.setOwner(partner); s.setName("Nông trại Rau sạch Hòa Lạc"); s.setLocation("Hòa Lạc, Thạch Thất, Hà Nội"); s.setDescription("Rau củ sạch từ vùng trồng Hòa Lạc - Thạch Thất."); s.setStatus("APPROVED"); return suppliers.save(s);
             });
             if (products.findBySupplierId(supplier.getId()).isEmpty()) {
                 Category category = categories.findByNameIgnoreCase("Rau lá").orElseGet(() -> { Category c = new Category(); c.setName("Rau lá"); return categories.save(c); });
-                Product p = new Product(); p.setSupplier(supplier); p.setCategory(category); p.setName("Rau cải sạch"); p.setDescription("Rau cải thu hoạch tại Lâm Đồng"); p.setPrice(new BigDecimal("15000")); p.setUnit("bó"); p.setStock(new BigDecimal("50")); p.setApprovalStatus("APPROVED"); p.setStatus("ACTIVE"); p.setCertificateNo("VG-DEMO-001"); products.save(p);
+                Product p = new Product(); p.setSupplier(supplier); p.setCategory(category); p.setName("Rau cải sạch Hòa Lạc"); p.setDescription("Rau cải thu hoạch tại Hòa Lạc, Thạch Thất, Hà Nội."); p.setPrice(new BigDecimal("15000")); p.setUnit("bó"); p.setStock(new BigDecimal("50")); p.setOrigin("Hòa Lạc, Thạch Thất, Hà Nội"); p.setApprovalStatus("APPROVED"); p.setStatus("ACTIVE"); p.setCertificateNo("VG-DEMO-001"); products.save(p);
                 ProductBatch b = new ProductBatch(); b.setProduct(p); b.setBatchCode("CM-DEMO-001"); b.setTraceCode(UUID.randomUUID().toString().replace("-", "")); b.setFarmName(supplier.getName()); b.setOrigin(supplier.getLocation()); b.setHarvestDate(LocalDate.now().minusDays(1)); b.setPackagingDate(LocalDate.now()); b.setExpiryDate(LocalDate.now().plusDays(5)); b.setQuantity(new BigDecimal("50")); b.setCertificateNo(p.getCertificateNo()); batches.save(b);
             }
         };

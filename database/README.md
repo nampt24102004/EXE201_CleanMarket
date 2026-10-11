@@ -1,5 +1,18 @@
 # Dữ liệu mẫu CleanMarket
 
+## Chạy toàn bộ bằng một file
+
+File [cleanmarket_full_data.sql](cleanmarket_full_data.sql) đã gộp phần nâng cấp payOS, Supplier/Partner, dữ liệu demo và đồng bộ ảnh. Đây là file nên dùng khi muốn thiết lập tổng thể mà không phải chạy từng script riêng.
+
+1. Chạy backend một lần với `JPA_DDL_AUTO=update` để Hibernate tạo các bảng, sau đó dừng backend.
+2. Mở MySQL Workbench, chọn **File > Open SQL Script** và mở `cleanmarket_full_data.sql`.
+3. Chạy toàn bộ file bằng nút tia sét.
+4. Khởi động lại backend và frontend.
+
+Script tự chọn `cleanmarket_db`, kiểm tra cột/index trước khi thêm và dùng `INSERT IGNORE` cho dữ liệu demo. Các file trong `migrations` vẫn được giữ để theo dõi lịch sử thay đổi và không cần chạy riêng nếu đã chạy file tổng hợp.
+File tổng hợp cũng tạm tắt `SQL_SAFE_UPDATES` trong phiên chạy để MySQL Workbench cho phép backfill dữ liệu, sau đó khôi phục đúng giá trị ban đầu.
+Các bản ghi demo được chuẩn hóa trong phạm vi **Ba Vì - Hòa Lạc - Thạch Thất**. Khi database đã chứa dữ liệu địa danh cũ, chạy `migrations/V4__normalize_demo_regions.sql` một lần hoặc chạy lại file tổng hợp để cập nhật hồ sơ, sản phẩm và lô hàng demo mà không thay đổi ảnh sản phẩm.
+
 [demo_data.sql](demo_data.sql) chứa dữ liệu mẫu cho 31 bảng trong mô hình hiện tại. Script dành cho MySQL 8 và chạy một lần trên database mới. Script không xóa dữ liệu; nếu chạy lại, các khóa chính/unique đã có sẽ báo lỗi.
 
 ## Cách nạp

@@ -1,12 +1,14 @@
 package com.app.features.products.entity;
 
 import com.app.common.BaseEntity;
+import com.app.features.auth.entity.UserAccount;
 import com.app.features.catalog.entity.Category;
 import com.app.features.products.enums.ProductApprovalStatus;
 import com.app.features.products.enums.ProductStatus;
 import com.app.features.suppliers.entity.Supplier;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,5 +26,12 @@ public class Product extends BaseEntity {
     @Column(nullable = false, length = 24) private String approvalStatus = ProductApprovalStatus.DRAFT.name();
     @Column(nullable = false, length = 24) private String status = ProductStatus.INACTIVE.name();
     @Column(length = 120) private String certificateNo;
+    @Column(nullable = false, length = 255) private String origin;
+    @Column(length = 1000) private String rejectionReason;
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "reviewed_by") private UserAccount reviewedBy;
+    private Instant reviewedAt;
     @Version private long version;
+    @PrePersist @PreUpdate private void defaults() {
+        if (origin == null || origin.isBlank()) origin = supplier == null ? "Chưa cập nhật" : supplier.getLocation();
+    }
 }

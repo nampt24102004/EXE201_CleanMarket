@@ -1,14 +1,17 @@
 package com.app.features.products.service;
 
-import com.app.common.*;
-import com.app.features.products.dto.PartnerProductControllerDto.ProductRequest;
-import com.app.features.products.dto.PartnerProductControllerDto.ProductView;
-import jakarta.validation.constraints.*;
-import jakarta.validation.Valid;
-import java.util.*;
+import com.app.common.ApiResponse;
+import com.app.features.products.dto.PartnerProductControllerDto.*;
+import java.time.LocalDate;
+import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface PartnerProductService {
-    public ApiResponse<List<ProductView>> mine();
-    public ApiResponse<ProductView> create(@Valid ProductRequest request);
-    public ApiResponse<ProductView> update(Long id, @Valid ProductRequest request);
+    ApiResponse<List<ProductView>> mine();
+    ApiResponse<ProductView> get(Long id);
+    ApiResponse<ProductView> create(ProductRequest request);
+    ApiResponse<ProductView> update(Long id,ProductRequest request);
+    ApiResponse<List<ImageView>> uploadImages(Long id,List<MultipartFile> files);
+    ApiResponse<CertificateView> uploadCertificate(Long id,String type,String number,String issuer,LocalDate issuedDate,LocalDate expiryDate,MultipartFile file);
+    ApiResponse<ProductView> submit(Long id);
 }
