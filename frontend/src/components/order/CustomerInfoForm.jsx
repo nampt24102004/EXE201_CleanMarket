@@ -1,6 +1,6 @@
 import { Alert, Card, Col, Form, Row } from 'react-bootstrap'
 
-function CustomerInfoForm({ customerInfo, onChange, validationErrors }) {
+function CustomerInfoForm({ customerInfo, onChange, validationErrors, shippingZones = [], shippingZoneCode = '', onShippingZoneChange, shippingZonesLoading = false, shippingZonesError = '' }) {
   const hasError = (message) => validationErrors.includes(message)
 
   const handleFieldChange = (event) => {
@@ -75,16 +75,37 @@ function CustomerInfoForm({ customerInfo, onChange, validationErrors }) {
             </Col>
             <Col md={6}>
               <Form.Group>
-                <Form.Label>Địa chỉ giao hàng</Form.Label>
+                <Form.Label>Khu vực giao hàng</Form.Label>
+                <Form.Select
+                  value={shippingZoneCode}
+                  onChange={(event) => onShippingZoneChange?.(event.target.value)}
+                  disabled={shippingZonesLoading}
+                  isInvalid={hasError('Vui lòng chọn khu vực giao hàng.')}
+                >
+                  <option value="">{shippingZonesLoading ? 'Đang tải khu vực...' : 'Chọn khu vực lân cận'}</option>
+                  {shippingZones.map((zone) => (
+                    <option key={zone.id} value={zone.zoneCode}>{zone.zoneName}</option>
+                  ))}
+                </Form.Select>
+                <Form.Control.Feedback type="invalid">
+                  Vui lòng chọn khu vực CleanMarket hỗ trợ giao hàng.
+                </Form.Control.Feedback>
+                {shippingZonesError && <Form.Text className="text-danger">{shippingZonesError}</Form.Text>}
+              </Form.Group>
+            </Col>
+            <Col xs={12}>
+              <Form.Group>
+                <Form.Label>Địa chỉ chi tiết</Form.Label>
                 <Form.Control
                   name="address"
                   value={customerInfo.address}
                   onChange={handleFieldChange}
                   isInvalid={hasError('Vui lòng nhập địa chỉ giao hàng.')}
-                  placeholder="Nhập địa chỉ giao hàng"
+                  disabled={!shippingZoneCode}
+                  placeholder={shippingZoneCode ? 'Số nhà, đường, thôn/xóm, xã/phường...' : 'Chọn khu vực trước khi nhập địa chỉ'}
                 />
                 <Form.Control.Feedback type="invalid">
-                  Địa chỉ giao hàng không được để trống.
+                  Địa chỉ chi tiết không được để trống.
                 </Form.Control.Feedback>
               </Form.Group>
             </Col>

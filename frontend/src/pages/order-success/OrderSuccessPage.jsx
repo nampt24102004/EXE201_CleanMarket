@@ -4,7 +4,6 @@ import formatQuantity from '../../utils/formatQuantity'
 
 const paymentLabels = {
   cod: 'Thanh toán khi nhận hàng COD',
-  vnpay: 'VNPAY Sandbox - đang chờ xác nhận',
   payos: 'payOS / VietQR - đang chờ xác nhận',
 }
 

@@ -6,7 +6,6 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -21,26 +20,22 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 
 @Service
-@ConditionalOnProperty(name = "app.storage.provider", havingValue = "r2", matchIfMissing = true)
 public class R2StorageService implements StorageService {
     private static final Set<String> IMAGE_MIME = Set.of("image/jpeg", "image/png");
     private static final Set<String> DOCUMENT_MIME = Set.of("image/jpeg", "image/png", "application/pdf");
-    private final String accountId, endpointOverride, region, accessKey, secretKey, bucket, publicBaseUrl;
+    private final String accountId, accessKey, secretKey, bucket, publicBaseUrl;
     private final long maxBytes;
     private final Duration readTtl;
 
     public R2StorageService(
             @Value("${app.r2.account-id:}") String accountId,
-            @Value("${app.storage.endpoint:}") String endpointOverride,
-            @Value("${app.storage.region:auto}") String region,
-            @Value("${app.storage.access-key-id:}") String accessKey,
-            @Value("${app.storage.secret-access-key:}") String secretKey,
-            @Value("${app.storage.bucket:}") String bucket,
-            @Value("${app.storage.public-base-url:}") String publicBaseUrl,
+            @Value("${app.r2.access-key-id:}") String accessKey,
+            @Value("${app.r2.secret-access-key:}") String secretKey,
+            @Value("${app.r2.bucket:}") String bucket,
+            @Value("${app.r2.public-base-url:}") String publicBaseUrl,
             @Value("${app.upload.max-file-size-mb:10}") long maxMb,
             @Value("${app.r2.read-url-ttl-seconds:900}") long ttlSeconds) {
-        this.accountId = accountId; this.endpointOverride = endpointOverride; this.region = region;
-        this.accessKey = accessKey; this.secretKey = secretKey;
+        this.accountId = accountId; this.accessKey = accessKey; this.secretKey = secretKey;
         this.bucket = bucket; this.publicBaseUrl = publicBaseUrl == null ? "" : publicBaseUrl.replaceAll("/+$", "");
         this.maxBytes = maxMb * 1024L * 1024L; this.readTtl = Duration.ofSeconds(ttlSeconds);
     }
@@ -97,21 +92,17 @@ public class R2StorageService implements StorageService {
         return dot < 0 ? "" : name.substring(dot + 1).toLowerCase(Locale.ROOT);
     }
     private void ensureConfigured() {
-        if (((endpointOverride == null || endpointOverride.isBlank()) && accountId.isBlank())
-                || accessKey.isBlank() || secretKey.isBlank() || bucket.isBlank())
-            throw BusinessException.bad("STORAGE_NOT_CONFIGURED", "Kho lưu trữ chưa được cấu hình trên backend");
+        if (accountId.isBlank() || accessKey.isBlank() || secretKey.isBlank() || bucket.isBlank())
+            throw BusinessException.bad("R2_NOT_CONFIGURED", "Cloudflare R2 chưa được cấu hình trên backend");
     }
     private StaticCredentialsProvider credentials() { return StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)); }
-    private URI endpoint() {
-        if (endpointOverride != null && !endpointOverride.isBlank()) return URI.create(endpointOverride);
-        return URI.create("https://" + accountId + ".r2.cloudflarestorage.com");
-    }
+    private URI endpoint() { return URI.create("https://" + accountId + ".r2.cloudflarestorage.com"); }
     private S3Client s3() {
-        return S3Client.builder().endpointOverride(endpoint()).region(Region.of(region)).credentialsProvider(credentials())
+        return S3Client.builder().endpointOverride(endpoint()).region(Region.of("auto")).credentialsProvider(credentials())
             .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).chunkedEncodingEnabled(false).build()).build();
     }
     private S3Presigner presigner() {
-        return S3Presigner.builder().endpointOverride(endpoint()).region(Region.of(region)).credentialsProvider(credentials())
+        return S3Presigner.builder().endpointOverride(endpoint()).region(Region.of("auto")).credentialsProvider(credentials())
             .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build()).build();
     }
 }
