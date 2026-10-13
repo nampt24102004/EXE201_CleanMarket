@@ -4,11 +4,11 @@ import { Link } from 'react-router-dom'
 const menus = {
   MANAGER: [
     ['', 'Tổng quan'], ['suppliers', 'Duyệt nhà cung cấp'], ['products', 'Duyệt sản phẩm'],
-    ['certifications', 'Chứng nhận'], ['orders', 'Đơn hàng'], ['complaints', 'Khiếu nại'], ['refunds', 'Hoàn tiền'],
+    ['certifications', 'Chứng nhận'], ['orders', 'Đơn hàng'], ['vouchers', 'Voucher sàn'], ['complaints', 'Khiếu nại'], ['refunds', 'Hoàn tiền'],
   ],
   ADMIN: [
     ['', 'Tổng quan'], ['suppliers', 'Duyệt nhà cung cấp'], ['products', 'Duyệt sản phẩm'],
-    ['users', 'Tài khoản'], ['categories', 'Danh mục'], ['audit-logs', 'Nhật ký'],
+    ['users', 'Tài khoản'], ['categories', 'Danh mục'], ['vouchers', 'Voucher sàn'], ['shipping-zones', 'Phí giao hàng'], ['audit-logs', 'Nhật ký'],
   ],
 }
 

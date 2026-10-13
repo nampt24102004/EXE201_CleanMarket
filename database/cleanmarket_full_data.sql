@@ -274,12 +274,12 @@ INSERT IGNORE INTO carts (id, user_id, created_at, updated_at) VALUES
 INSERT IGNORE INTO cart_items (id, cart_id, user_id, product_id, quantity, created_at, updated_at) VALUES
   (1301, 1201, 101, 703, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
--- Don da giao COD, don VNPAY cho thanh toan, don COD hai Partner, don VNPAY da thanh toan.
+-- Don da giao COD, don PAYOS cho thanh toan, don COD hai Partner, don PAYOS da thanh toan.
 INSERT IGNORE INTO orders (id, user_id, order_code, subtotal, discount, shipping_fee, total_amount, status, payment_method, full_name, phone, address, note, created_at, updated_at) VALUES
   (1401, 101, 'CM-DEMO-COD-DELIVERED', 65000, 0, 0, 65000, 'DELIVERED', 'COD', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Đơn đã giao', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1402, 101, 'CM-DEMO-VNPAY-PENDING', 30000, 0, 0, 30000, 'CREATED', 'VNPAY', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Có thể gọi API tạo URL VNPAY', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1402, 101, 'CM-DEMO-PAYOS-PENDING', 30000, 0, 0, 30000, 'CREATED', 'PAYOS', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Có thể gọi API tạo URL PAYOS', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1403, 101, 'CM-DEMO-MULTI-SUPPLIER', 70000, 0, 0, 70000, 'CREATED', 'COD', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Một đơn, hai nhà cung cấp', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1404, 101, 'CM-DEMO-VNPAY-PAID', 60000, 5000, 0, 55000, 'PAID', 'VNPAY', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Dữ liệu lịch sử có voucher', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1404, 101, 'CM-DEMO-PAYOS-PAID', 60000, 5000, 0, 55000, 'PAID', 'PAYOS', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Dữ liệu lịch sử có voucher', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Phan don theo nha cung cap.
 INSERT IGNORE INTO supplier_orders (id, order_id, supplier_id, total_amount, status, created_at, updated_at) VALUES
@@ -298,14 +298,14 @@ INSERT IGNORE INTO order_items (id, supplier_order_id, product_id, batch_id, pro
   (1605, 1504, 704, 904, 'Bưởi', 45000, 'kg', 1, 45000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1606, 1505, 703, 903, 'Cà chua', 30000, 'kg', 2, 60000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
--- Thanh toan COD va VNPAY.
+-- Thanh toan COD va PAYOS.
 INSERT IGNORE INTO payments (id, order_id, provider, status, amount, txn_ref, provider_transaction_no, response_code, paid_at, created_at, updated_at) VALUES
   (1701, 1401, 'COD', 'PAID', 65000, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1702, 1402, 'VNPAY', 'PENDING', 30000, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1702, 1402, 'PAYOS', 'PENDING', 30000, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1703, 1403, 'COD', 'PENDING', 70000, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1704, 1404, 'VNPAY', 'PAID', 55000, 'CMDEMO20260922PAID', 'DEMO-TXN-001', '00', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1704, 1404, 'PAYOS', 'PAID', 55000, 'CMDEMO20260922PAID', 'DEMO-TXN-001', '00', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
--- Log VNPAY lich su; khong dung giao dich mau nay de goi IPN.
+-- Log PAYOS lich su; khong dung giao dich mau nay de goi IPN.
 INSERT IGNORE INTO payment_transactions (id, payment_id, event_type, request_payload, response_payload, signature_valid, response_code, provider_transaction_no, created_at, updated_at) VALUES
   (1801, 1704, 'IPN', '{"vnp_TxnRef":"CMDEMO20260922PAID","vnp_ResponseCode":"00"}', '{"RspCode":"00","Message":"Confirm Success"}', 1, '00', 'DEMO-TXN-001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
@@ -316,7 +316,7 @@ INSERT IGNORE INTO order_status_history (id, order_id, status, actor_user_id, no
   (1903, 1402, 'CREATED', 101, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1904, 1403, 'CREATED', 101, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1905, 1404, 'CREATED', 101, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1906, 1404, 'PAID', NULL, 'VNPAY IPN đã xác thực', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1906, 1404, 'PAID', NULL, 'PAYOS IPN đã xác thực', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Danh gia tu don da giao.
 INSERT IGNORE INTO reviews (id, user_id, order_item_id, product_id, supplier_id, rating, comment, created_at, updated_at) VALUES
@@ -339,7 +339,7 @@ INSERT IGNORE INTO vouchers (id, code, description, discount_type, discount_valu
   (2401, 'CLEAN5K', 'Giảm 5.000đ cho đơn từ 50.000đ.', 'FIXED_AMOUNT', 5000, 50000, 100, 1, CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (2402, 'CLEAN10', 'Giảm 10% cho đơn từ 100.000đ.', 'PERCENTAGE', 10, 100000, 50, 0, CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
--- Lich su su dung voucher tren don VNPAY da thanh toan.
+-- Lich su su dung voucher tren don PAYOS da thanh toan.
 INSERT IGNORE INTO voucher_usages (id, voucher_id, user_id, order_id, discount_amount, created_at, updated_at) VALUES
   (2501, 2401, 101, 1404, 5000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 

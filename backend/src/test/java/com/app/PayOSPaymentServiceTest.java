@@ -29,6 +29,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import vn.payos.model.webhooks.Webhook;
+import com.app.features.promotions.service.VoucherService;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -45,6 +46,7 @@ class PayOSPaymentServiceTest {
     @Mock PayOSPaymentProvider provider;
     @Mock OrderStatusHistoryService history;
     @Mock ApplicationEventPublisher events;
+    @Mock VoucherService voucherService;
 
     PayOSPaymentServiceImpl service;
     UserAccount owner;
@@ -53,7 +55,7 @@ class PayOSPaymentServiceTest {
 
     @BeforeEach void setup() {
         service = new PayOSPaymentServiceImpl(payments, transactions, orders, orderItems, notifications,
-            current, provider, history, events);
+            current, provider, history, events, voucherService);
         owner = new UserAccount(); owner.setId(10L); owner.setEmail("buyer@example.test"); owner.setFullName("Buyer");
         order = new MarketOrder(); order.setId(25L); order.setUser(owner); order.setOrderCode("CM25");
         order.setPaymentMethod("PAYOS"); order.setStatus("PENDING_PAYMENT"); order.setTotalAmount(new BigDecimal("300000"));

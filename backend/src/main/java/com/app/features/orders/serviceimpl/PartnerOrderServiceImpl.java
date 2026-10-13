@@ -28,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
         Supplier supplier = ownedSupplier(); SupplierOrder part = parts.findById(id).orElseThrow(() -> BusinessException.missing("Phần đơn hàng")); if (!part.getSupplier().getId().equals(supplier.getId())) throw BusinessException.forbidden();
         List<String> states = List.of(SupplierOrderStatus.CREATED.name(), SupplierOrderStatus.CONFIRMED.name(), SupplierOrderStatus.SHIPPED.name(), SupplierOrderStatus.DELIVERED.name()); int previous = states.indexOf(part.getStatus()); int next = states.indexOf(request.status());
         if (next != previous + 1) throw BusinessException.bad("INVALID_ORDER_STATUS", "Trạng thái đơn hàng phải chuyển theo đúng thứ tự");
-        if (List.of("VNPAY", "PAYOS").contains(part.getOrder().getPaymentMethod()) && !payments.existsByOrderIdAndStatus(part.getOrder().getId(), "PAID")) throw BusinessException.bad("PAYMENT_PENDING", "Đơn thanh toán trực tuyến chưa được xác nhận");
+        if ("PAYOS".equals(part.getOrder().getPaymentMethod()) && !payments.existsByOrderIdAndStatus(part.getOrder().getId(), "PAID")) throw BusinessException.bad("PAYMENT_PENDING", "Đơn thanh toán trực tuyến chưa được xác nhận");
         part.setStatus(request.status()); parts.save(part); MarketOrder order = part.getOrder();
         if (parts.findByOrderId(order.getId()).stream().allMatch(p -> "DELIVERED".equals(p.getStatus()))) {
             order.setStatus("DELIVERED"); history.record(order, "DELIVERED", current.get(), null);

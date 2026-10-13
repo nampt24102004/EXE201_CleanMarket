@@ -1,0 +1,1 @@
+package com.app.features.promotions.repository;import com.app.features.promotions.entity.OrderVoucher;import java.util.List;import org.springframework.data.jpa.repository.JpaRepository;public interface OrderVoucherRepository extends JpaRepository<OrderVoucher,Long>{List<OrderVoucher> findByOrderId(Long orderId);}

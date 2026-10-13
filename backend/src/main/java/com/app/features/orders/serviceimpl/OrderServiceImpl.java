@@ -31,15 +31,19 @@ import java.math.BigDecimal;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.context.ApplicationEventPublisher;
+import com.app.features.promotions.service.VoucherService;
+import com.app.features.promotions.dto.VoucherDto.CheckoutQuote;
+import com.app.features.promotions.dto.VoucherDto.SupplierDiscount;
 
 @Service
 public class OrderServiceImpl implements OrderService {
-    private final CartItemRepository cart; private final ProductRepository products; private final OrderRepository orders; private final SupplierOrderRepository supplierOrders; private final OrderItemRepository orderItems; private final PaymentRepository payments; private final CurrentUser current; private final OrderStatusHistoryService history; private final ApplicationEventPublisher events; private final PayOSPaymentProvider payOSProvider;
-    public OrderServiceImpl(CartItemRepository cart, ProductRepository products, OrderRepository orders, SupplierOrderRepository supplierOrders, OrderItemRepository orderItems, PaymentRepository payments, CurrentUser current, OrderStatusHistoryService history, ApplicationEventPublisher events, PayOSPaymentProvider payOSProvider) { this.cart = cart; this.products = products; this.orders = orders; this.supplierOrders = supplierOrders; this.orderItems = orderItems; this.payments = payments; this.current = current; this.history = history; this.events = events; this.payOSProvider = payOSProvider; }
+    private final CartItemRepository cart; private final ProductRepository products; private final OrderRepository orders; private final SupplierOrderRepository supplierOrders; private final OrderItemRepository orderItems; private final PaymentRepository payments; private final CurrentUser current; private final OrderStatusHistoryService history; private final ApplicationEventPublisher events; private final PayOSPaymentProvider payOSProvider; private final VoucherService voucherService;
+    public OrderServiceImpl(CartItemRepository cart, ProductRepository products, OrderRepository orders, SupplierOrderRepository supplierOrders, OrderItemRepository orderItems, PaymentRepository payments, CurrentUser current, OrderStatusHistoryService history, ApplicationEventPublisher events, PayOSPaymentProvider payOSProvider, VoucherService voucherService) { this.cart = cart; this.products = products; this.orders = orders; this.supplierOrders = supplierOrders; this.orderItems = orderItems; this.payments = payments; this.current = current; this.history = history; this.events = events; this.payOSProvider = payOSProvider; this.voucherService=voucherService; }
     @Transactional public OrderView checkout(CheckoutRequest request) {
         if (request.fullName() == null || request.fullName().isBlank() || request.phone() == null || !request.phone().matches("0[0-9]{9}") || request.address() == null || request.address().isBlank()) throw BusinessException.bad("INVALID_SHIPPING", "Thông tin giao hàng không hợp lệ");
         String method = request.paymentMethod() == null ? "" : request.paymentMethod().toUpperCase(); if (Arrays.stream(PaymentMethod.values()).noneMatch(value -> value.name().equals(method))) throw BusinessException.bad("INVALID_PAYMENT_METHOD", "Phương thức thanh toán không hợp lệ");
         UserAccount user = current.get(); List<CartItem> items = cart.findByUserId(user.getId()); if (items.isEmpty()) throw BusinessException.bad("EMPTY_CART", "Giỏ hàng đang trống");
+        CheckoutQuote quote=voucherService.quoteFor(user,request.address(),request.platformVoucherCode(),request.partnerVoucherCodes());
         Map<Long, Product> locked = new HashMap<>();
         for (Long id : items.stream().map(item -> item.getProduct().getId()).distinct().sorted().toList()) locked.put(id, products.lockById(id).orElseThrow(() -> BusinessException.missing("Sản phẩm")));
         BigDecimal total = BigDecimal.ZERO;
@@ -50,18 +54,20 @@ public class OrderServiceImpl implements OrderService {
             if (item.getQuantity().signum() <= 0 || p.getStock().compareTo(item.getQuantity()) < 0) throw BusinessException.bad("PRODUCT_OUT_OF_STOCK", p.getName() + " không đủ tồn kho");
             BigDecimal line = p.getPrice().multiply(item.getQuantity()); total = total.add(line); supplierTotals.merge(p.getSupplier().getId(), line, BigDecimal::add);
         }
-        MarketOrder order = new MarketOrder(); order.setUser(user); order.setOrderCode("CM" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase()); order.setFullName(request.fullName().trim()); order.setPhone(request.phone()); order.setAddress(request.address().trim()); order.setNote(request.note()); order.setPaymentMethod(method); order.setSubtotal(total); order.setDiscount(BigDecimal.ZERO); order.setShippingFee(BigDecimal.ZERO); order.setTotalAmount(total); if ("PAYOS".equals(method)) order.setStatus("PENDING_PAYMENT"); orders.save(order); history.record(order, order.getStatus(), user, null);
+        if(total.compareTo(quote.subtotal())!=0) throw BusinessException.conflict("CART_CHANGED","Giỏ hàng vừa thay đổi, vui lòng kiểm tra lại báo giá");
+        MarketOrder order = new MarketOrder(); order.setUser(user); order.setOrderCode("CM" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase()); order.setFullName(request.fullName().trim()); order.setPhone(request.phone()); order.setAddress(request.address().trim()); order.setNote(request.note()); order.setPaymentMethod(method); order.setSubtotal(total); order.setPartnerDiscount(quote.partnerDiscount());order.setPlatformDiscount(quote.platformDiscount());order.setDiscount(quote.partnerDiscount().add(quote.platformDiscount()));order.setShippingFee(quote.shippingFee());order.setShippingDiscount(quote.shippingDiscount());order.setShippingZone(quote.shippingZone());order.setTotalAmount(quote.totalAmount()); if ("PAYOS".equals(method)) order.setStatus("PENDING_PAYMENT"); orders.save(order); history.record(order, order.getStatus(), user, null);
         Map<Long, SupplierOrder> parts = new HashMap<>();
-        for (var entry : supplierTotals.entrySet()) { SupplierOrder part = new SupplierOrder(); part.setOrder(order); part.setSupplier(locked.values().stream().filter(p -> p.getSupplier().getId().equals(entry.getKey())).findFirst().orElseThrow().getSupplier()); part.setTotalAmount(entry.getValue()); supplierOrders.save(part); parts.put(entry.getKey(), part); }
+        for (var entry : supplierTotals.entrySet()) { SupplierDiscount d=quote.suppliers().stream().filter(s->s.supplierId().equals(entry.getKey())).findFirst().orElseThrow();SupplierOrder part = new SupplierOrder(); part.setOrder(order); part.setSupplier(locked.values().stream().filter(p -> p.getSupplier().getId().equals(entry.getKey())).findFirst().orElseThrow().getSupplier());part.setSubtotal(entry.getValue());part.setDiscount(d.discount());part.setTotalAmount(d.payable()); supplierOrders.save(part); parts.put(entry.getKey(), part); }
         for (CartItem item : items) {
             Product p = locked.get(item.getProduct().getId()); OrderItem snapshot = new OrderItem(); snapshot.setSupplierOrder(parts.get(p.getSupplier().getId())); snapshot.setProduct(p); snapshot.setProductNameSnapshot(p.getName()); snapshot.setUnitPrice(p.getPrice()); snapshot.setUnit(p.getUnit()); snapshot.setQuantity(item.getQuantity()); snapshot.setTotalAmount(p.getPrice().multiply(item.getQuantity())); orderItems.save(snapshot); p.setStock(p.getStock().subtract(item.getQuantity()));
         }
-        Payment payment = new Payment(); payment.setOrder(order); payment.setProvider(method); payment.setAmount(total); payments.save(payment);
+        voucherService.reserve(user,order,parts,quote,request.platformVoucherCode());if("COD".equals(method))voucherService.redeem(order.getId());
+        Payment payment = new Payment(); payment.setOrder(order); payment.setProvider(method); payment.setAmount(order.getTotalAmount()); payments.save(payment);
         List<OrderItemMail> mailItems = items.stream().map(item -> {
             Product product = locked.get(item.getProduct().getId());
             return new OrderItemMail(product.getName(), item.getQuantity(), product.getUnit(), product.getPrice(), product.getPrice().multiply(item.getQuantity()));
         }).toList();
-        events.publishEvent(new OrderPlacedMailEvent(user.getEmail(), order.getFullName(), order.getOrderCode(), method, total, order.getAddress(), mailItems));
+        events.publishEvent(new OrderPlacedMailEvent(user.getEmail(), order.getFullName(), order.getOrderCode(), method, order.getTotalAmount(), order.getAddress(), mailItems));
         cart.deleteByUserId(user.getId());
         return view(order);
     }
@@ -105,11 +111,11 @@ public class OrderServiceImpl implements OrderService {
         }
         parts.forEach(part -> part.setStatus("CANCELLED"));
         attempts.stream().filter(p -> "PENDING".equals(p.getStatus())).forEach(p -> p.setStatus("CANCELLED"));
-        order.setStatus("CANCELLED"); history.record(order, "CANCELLED", current.get(), null);
+        voucherService.release(order.getId());order.setStatus("CANCELLED"); history.record(order, "CANCELLED", current.get(), null);
         return view(order);
     }
     public OrderView view(MarketOrder order) {
-        List<SupplierOrderView> parts = supplierOrders.findByOrderId(order.getId()).stream().map(part -> new SupplierOrderView(part.getId(), part.getSupplier().getId(), part.getSupplier().getName(), part.getStatus(), part.getTotalAmount(), orderItems.findBySupplierOrderId(part.getId()).stream().map(item -> new OrderItemView(item.getId(), item.getProduct().getId(), item.getProductNameSnapshot(), item.getUnitPrice(), item.getUnit(), item.getQuantity(), item.getTotalAmount())).toList())).toList();
-        return new OrderView(order.getId(), order.getOrderCode(), order.getStatus(), order.getPaymentMethod(), order.getTotalAmount(), order.getFullName(), order.getPhone(), order.getAddress(), order.getNote(), order.getCreatedAt(), parts);
+        List<SupplierOrderView> parts = supplierOrders.findByOrderId(order.getId()).stream().map(part -> new SupplierOrderView(part.getId(), part.getSupplier().getId(), part.getSupplier().getName(), part.getStatus(), part.getSubtotal()==null?part.getTotalAmount():part.getSubtotal(),part.getDiscount()==null?BigDecimal.ZERO:part.getDiscount(),part.getTotalAmount(), orderItems.findBySupplierOrderId(part.getId()).stream().map(item -> new OrderItemView(item.getId(), item.getProduct().getId(), item.getProductNameSnapshot(), item.getUnitPrice(), item.getUnit(), item.getQuantity(), item.getTotalAmount())).toList())).toList();
+        return new OrderView(order.getId(), order.getOrderCode(), order.getStatus(), order.getPaymentMethod(),order.getSubtotal(),order.getPartnerDiscount(),order.getPlatformDiscount(),order.getShippingFee(),order.getShippingDiscount(), order.getTotalAmount(),order.getShippingZone(), order.getFullName(), order.getPhone(), order.getAddress(), order.getNote(), order.getCreatedAt(), parts);
     }
 }

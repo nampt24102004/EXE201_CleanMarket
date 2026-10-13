@@ -15,12 +15,12 @@ import com.app.features.user.entity.Address;
 import com.app.features.user.repository.AddressRepository;
 
 import com.app.features.auth.entity.UserAccount;
+import com.app.features.shipping.entity.ShippingZone;
+import com.app.features.shipping.repository.ShippingZoneRepository;
 import com.app.features.auth.repository.UserRepository;
 import com.app.features.catalog.entity.Category;
 import com.app.features.catalog.repository.CategoryRepository;
 import com.app.features.orders.repository.OrderRepository;
-import com.app.features.payments.service.PaymentService;
-import com.app.features.payments.util.VnpaySignature;
 import com.app.features.products.entity.Product;
 import com.app.features.products.repository.ProductRepository;
 import com.app.features.suppliers.entity.Supplier;
@@ -47,9 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "spring.datasource.driver-class-name=org.h2.Driver",
     "spring.jpa.hibernate.ddl-auto=create-drop",
     "app.auth.email-verification-required=false",
-    "app.mail.delivery-enabled=false",
-    "app.vnpay.tmn-code=TESTCODE",
-    "app.vnpay.hash-secret=test-hash-secret"
+    "app.mail.delivery-enabled=false"
 })
 @AutoConfigureMockMvc
 class MarketplaceFlowTest {
@@ -60,7 +58,6 @@ class MarketplaceFlowTest {
     @Autowired CategoryRepository categories;
     @Autowired ProductRepository products;
     @Autowired OrderRepository orders;
-    @Autowired PaymentService payments;
     @Autowired PasswordEncoder encoder;
     @Autowired CartRepository carts;
     @Autowired OrderStatusHistoryRepository history;
@@ -69,6 +66,7 @@ class MarketplaceFlowTest {
     @Autowired UserRoleAssignmentRepository userRoles;
     @Autowired RolePermissionAssignmentRepository rolePermissions;
     @Autowired AddressRepository addresses;
+    @Autowired ShippingZoneRepository shippingZones;
 
     @Test void rootRedirectsToFrontend() throws Exception {
         mvc.perform(get("/"))
@@ -76,7 +74,8 @@ class MarketplaceFlowTest {
             .andExpect(redirectedUrl("http://localhost:5173"));
     }
 
-    @Test void checkoutGroupsSuppliersAndIpnRejectsTampering() throws Exception {
+    @Test void checkoutGroupsSuppliersAndSupportsCancellation() throws Exception {
+        ShippingZone zone=new ShippingZone();zone.setZoneCode("TEST_HANOI");zone.setZoneName("Hà Nội");zone.setAddressKeywords("Hanoi,Hà Nội");zone.setShippingFee(new BigDecimal("15000"));zone.setFreeShippingThreshold(BigDecimal.ONE);shippingZones.save(zone);
         Category category = new Category(); category.setName("Vegetables"); categories.save(category);
         Product a = product("Carrot", "25000", "Farm A", category);
         Product b = product("Tomato", "40000", "Farm B", category);
@@ -100,20 +99,6 @@ class MarketplaceFlowTest {
         assertEquals("CREATED", history.findByOrderIdOrderByCreatedAtAsc(codId).get(0).getStatus());
         assertEquals(0, orders.findById(codId).orElseThrow().getSubtotal().compareTo(new BigDecimal("90000")));
         assertEquals(8, products.findById(a.getId()).orElseThrow().getStock().intValue());
-        add(session, a.getId(), "1");
-        JsonNode vnpay = checkout(session, "VNPAY");
-        long orderId = vnpay.path("data").path("id").asLong();
-        JsonNode paymentUrl = body(mvc.perform(post("/api/payments/vnpay/create").with(csrf()).session(session).contentType(MediaType.APPLICATION_JSON).content("{\"orderId\":" + orderId + "}")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
-        String txnRef = paymentUrl.path("data").path("txnRef").asText();
-        Map<String, String> callback = new HashMap<>(); callback.put("vnp_TmnCode", "TESTCODE"); callback.put("vnp_TxnRef", txnRef); callback.put("vnp_Amount", "2500000"); callback.put("vnp_ResponseCode", "00"); callback.put("vnp_TransactionStatus", "00"); callback.put("vnp_SecureHash", VnpaySignature.sign(callback, "test-hash-secret"));
-        assertEquals("04", payments.ipn(Map.of("vnp_TmnCode", "TESTCODE", "vnp_TxnRef", txnRef, "vnp_Amount", "1", "vnp_ResponseCode", "00", "vnp_TransactionStatus", "00", "vnp_SecureHash", VnpaySignature.sign(Map.of("vnp_TmnCode", "TESTCODE", "vnp_TxnRef", txnRef, "vnp_Amount", "1", "vnp_ResponseCode", "00", "vnp_TransactionStatus", "00"), "test-hash-secret"))).RspCode());
-        assertEquals("97", payments.ipn(new HashMap<>(Map.of("vnp_TmnCode", "TESTCODE", "vnp_TxnRef", txnRef, "vnp_Amount", "2500000", "vnp_ResponseCode", "00", "vnp_TransactionStatus", "00", "vnp_SecureHash", "0".repeat(128)))).RspCode());
-        assertEquals("00", payments.ipn(callback).RspCode());
-        assertEquals("02", payments.ipn(callback).RspCode());
-        JsonNode statusBody = body(mvc.perform(get("/api/orders/" + vnpay.path("data").path("orderCode").asText() + "/payment-status").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
-        assertEquals("PAID", statusBody.path("data").path("status").asText());
-        assertEquals("PAID", orders.findById(orderId).orElseThrow().getStatus());
-        assertEquals("PAID", history.findByOrderIdOrderByCreatedAtAsc(orderId).get(1).getStatus());
         int availableBeforeCancel = products.findById(a.getId()).orElseThrow().getStock().intValue();
         add(session, a.getId(), "1");
         JsonNode cancellable = checkout(session, "COD");
@@ -124,7 +109,7 @@ class MarketplaceFlowTest {
         assertEquals("CANCELLED", history.findByOrderIdOrderByCreatedAtAsc(cancelId).get(1).getStatus());        var partnerLogin = mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"farma@example.test\",\"password\":\"secure-pass-123\"}")).andExpect(status().isOk()).andReturn();
         MockHttpSession partnerSession = (MockHttpSession) partnerLogin.getRequest().getSession(false);
         mvc.perform(get("/api/partner/products").session(partnerSession)).andExpect(status().isOk());
-        String batchJson = "{\"farmName\":\"Farm A\",\"origin\":\"Vietnam\",\"harvestDate\":\"2026-09-18\",\"packagingDate\":\"2026-09-19\",\"expiryDate\":\"2026-10-10\",\"quantity\":5}";
+        String batchJson = "{\"farmName\":\"Farm A\",\"origin\":\"Vietnam\",\"harvestDate\":\"2026-09-18\",\"packagingDate\":\"2026-09-19\",\"expiryDate\":\"2027-10-10\",\"quantity\":5}";
         mvc.perform(post("/api/partner/products/" + b.getId() + "/batches").with(csrf()).session(partnerSession).contentType(MediaType.APPLICATION_JSON).content(batchJson)).andExpect(status().isForbidden());
         JsonNode batch = body(mvc.perform(post("/api/partner/products/" + a.getId() + "/batches").with(csrf()).session(partnerSession).contentType(MediaType.APPLICATION_JSON).content(batchJson)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         mvc.perform(get("/api/trace/" + batch.path("data").path("traceCode").asText())).andExpect(status().isOk()).andExpect(jsonPath("$.data.productName").value("Carrot"));

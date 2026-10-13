@@ -7,6 +7,7 @@ const items = [
   ['products', 'Sản phẩm'],
   ['batches', 'Lô hàng & QR'],
   ['orders', 'Đơn của tôi'],
+  ['vouchers', 'Voucher'],
 ]
 
 export default function PartnerNav({ active = '' }) {

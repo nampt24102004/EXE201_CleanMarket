@@ -11,11 +11,6 @@ const paymentOptions = [
     label: 'payOS / VietQR',
     description: 'Quét VietQR hoặc mở cổng payOS để chuyển khoản ngân hàng.',
   },
-  {
-    id: 'vnpay',
-    label: 'VNPAY Sandbox',
-    description: 'Backend sẽ tạo URL thanh toán và xác thực kết quả từ VNPAY Sandbox.',
-  },
 ]
 
 function PaymentMethod({ value, onChange }) {

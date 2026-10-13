@@ -25,6 +25,8 @@ import PayOSPaymentPage from './pages/payment/PayOSPaymentPage'
 import SupplierRegistrationPage from './pages/supplier-registration/SupplierRegistrationPage'
 import { PartnerProductFormPage, PartnerProductsPage } from './pages/partner-products/PartnerProductPages'
 import { ApprovalDetailPage, ApprovalListPage } from './pages/approvals/ApprovalPages'
+import VoucherManagementPage from './pages/vouchers/VoucherManagementPage'
+import ShippingZonePage from './pages/shipping/ShippingZonePage'
 import { api } from './services/apiClient'
 
 const blankCustomer = { fullName: '', phone: '', email: '', address: '', note: '' }
@@ -205,11 +207,11 @@ function AppContent() {
   const goCheckout = () => navigate(hasRole('USER') ? '/checkout' : '/login', { state: { from: '/checkout' } })
   const buyNow = async (product, value) => { await addToCart(product, value); if (hasRole('USER')) navigate('/checkout') }
 
-  const confirmOrder = async () => {
+  const confirmOrder = async ({ platformVoucherCode = null, partnerVoucherCodes = [], shippingAddress = '' } = {}) => {
     const errors = []
     if (!customerInfo.fullName.trim()) errors.push('Vui lòng nhập họ và tên.')
     if (!/^0\d{9}$/.test(customerInfo.phone.trim())) errors.push('Vui lòng nhập số điện thoại gồm 10 chữ số, bắt đầu bằng 0.')
-    if (!customerInfo.address.trim()) errors.push('Vui lòng nhập địa chỉ giao hàng.')
+    if (!shippingAddress.trim()) errors.push('Vui lòng nhập địa chỉ giao hàng.')
     if (!paymentMethod) errors.push('Vui lòng chọn phương thức thanh toán.')
     if (!cartItems.length) errors.push('Giỏ hàng của bạn đang trống.')
     setValidationErrors(errors)
@@ -218,9 +220,11 @@ function AppContent() {
       const result = await api.post('/api/orders/checkout', {
         fullName: customerInfo.fullName,
         phone: customerInfo.phone,
-        address: customerInfo.address,
+        address: shippingAddress,
         note: customerInfo.note,
         paymentMethod: paymentMethod.toUpperCase(),
+        platformVoucherCode,
+        partnerVoucherCodes,
       })
       const order = normalizeOrder(result, products, user.email)
       setPlacedOrder(order)
@@ -234,14 +238,6 @@ function AppContent() {
         } catch (caught) {
           showError(caught)
           navigate(`/payment/payos?orderId=${order.id}`)
-        }
-      } else if (paymentMethod === 'vnpay') {
-        try {
-          const payment = await api.post('/api/payments/vnpay/create', { orderId: order.id })
-          window.location.assign(payment.paymentUrl)
-        } catch (caught) {
-          showError(caught)
-          navigate(`/payment-result?orderCode=${order.orderCode}`)
         }
       } else navigate('/order-success')
     } catch (caught) { showError(caught) }
@@ -273,6 +269,10 @@ function AppContent() {
       <Route path="/partner/products" element={protect(['PARTNER'], <PartnerProductsPage />)} />
       <Route path="/partner/products/create" element={protect(['PARTNER'], <PartnerProductFormPage />)} />
       <Route path="/partner/products/:id/edit" element={protect(['PARTNER'], <PartnerProductFormPage />)} />
+      <Route path="/partner/vouchers" element={protect(['PARTNER'], <VoucherManagementPage role="PARTNER" />)} />
+      <Route path="/manager/vouchers" element={protect(['MANAGER','ADMIN'], <VoucherManagementPage role="MANAGER" />)} />
+      <Route path="/admin/vouchers" element={protect(['ADMIN'], <VoucherManagementPage role="MANAGER" />)} />
+      <Route path="/admin/shipping-zones" element={protect(['ADMIN'], <ShippingZonePage />)} />
       <Route path="/manager/suppliers" element={protect(['MANAGER','ADMIN'], <ApprovalListPage kind="suppliers" />)} />
       <Route path="/manager/suppliers/:id" element={protect(['MANAGER','ADMIN'], <ApprovalDetailPage kind="suppliers" />)} />
       <Route path="/manager/products" element={protect(['MANAGER','ADMIN'], <ApprovalListPage kind="products" />)} />

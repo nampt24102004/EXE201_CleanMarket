@@ -1,6 +1,6 @@
 # CleanMarket Backend
 
-Spring Boot 3.5 / Java 17 / MySQL API dựa trên hai tài liệu CleanMarket System Design và SRS. Backend dùng session cookie, role USER/PARTNER/MANAGER/ADMIN, JPA, QR theo ProductBatch, checkout nhiều nhà cung cấp, COD, VNPAY Sandbox và payOS/VietQR.
+Spring Boot 3.5 / Java 17 / MySQL API dựa trên hai tài liệu CleanMarket System Design và SRS. Backend dùng session cookie, role USER/PARTNER/MANAGER/ADMIN, JPA, QR theo ProductBatch, checkout nhiều nhà cung cấp, COD và payOS/VietQR.
 
 ## Chạy local
 
@@ -45,7 +45,7 @@ Danh sách 31 bảng, quan hệ và trạng thái sử dụng nằm trong [data-
 | Partner | `/api/partner/products`, `/api/partner/products/{id}/batches`, `/api/partner/batches/{id}/qr`, `/api/partner/orders`, `PUT /api/partner/supplier-profile` |
 | Manager | `/api/manager/suppliers/pending`, `/api/manager/products`, `/api/manager/orders`, `/api/manager/complaints`, `/api/manager/refunds` |
 | Admin | `/api/admin/users`, `/api/admin/roles`, `/api/admin/categories`, `/api/admin/audit-logs` |
-| Payment | `POST /api/payments/vnpay/create`, `POST /api/payments/payos/create`, `POST /api/payments/payos/webhook`, `GET /api/payments/order/{orderId}/status` |
+| Payment | `POST /api/payments/payos/create`, `POST /api/payments/payos/webhook`, `GET /api/payments/order/{orderId}/status` |
 
 Response thành công dùng `{ "success": true, "data": ..., "message": "Success" }`; lỗi dùng `{ "success": false, "code": "...", "message": "...", "errors": [] }`. Đăng ký/đăng nhập trả về `user`, `roles` và thiết lập cookie `JSESSIONID`; không trả `accessToken`. Frontend dùng `fetch(..., { credentials: 'include' })` hoặc Axios `withCredentials: true` cho mọi request.
 
@@ -57,13 +57,9 @@ Ví dụ checkout từ giỏ của USER:
 { "fullName": "Nguyễn Văn A", "phone": "0912345678", "address": "Hà Nội", "note": "", "paymentMethod": "COD" }
 ```
 
-Backend đọc giá và tồn kho từ DB, khóa từng Product khi checkout, lưu tên/giá chụp trên OrderItem và tách SupplierOrder. Người mua có thể hủy đơn còn ở trạng thái CREATED nếu Partner chưa xử lý và không có yêu cầu VNPAY đang chờ; thao tác này hoàn tồn kho.
+Backend đọc giá và tồn kho từ DB, khóa từng Product khi checkout, lưu tên/giá chụp trên OrderItem và tách SupplierOrder. Người mua có thể hủy đơn còn ở trạng thái CREATED hoặc PENDING_PAYMENT nếu Partner chưa xử lý và giao dịch payOS chưa được xác nhận; thao tác này hoàn tồn kho.
 
-## VNPAY
-
-Đặt `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_RETURN_URL` theo merchant Sandbox. React chỉ gọi create với `orderId` và chuyển sang `paymentUrl`; backend tính số tiền từ Order, tạo HMAC-SHA512, kiểm tra chữ ký + mã merchant + số tiền tại IPN và chống callback lặp. Return URL chỉ chuyển người dùng về frontend; frontend phải hỏi API trạng thái thanh toán. IPN cần backend có HTTPS public; localhost chỉ đủ để thử các endpoint khác.
-
-Refund hiện là **yêu cầu xử lý thủ công** gắn với complaint và payment, chưa gọi API hoàn tiền của VNPAY. Manager có thể ghi mã tham chiếu khi thao tác hoàn tiền bên ngoài đã hoàn tất qua endpoint `PUT /api/manager/refunds/{id}/manual-complete`; trạng thái này không tự xác nhận từ VNPAY.
+Refund hiện là **yêu cầu xử lý thủ công** gắn với complaint và payment. Manager có thể ghi mã tham chiếu khi thao tác hoàn tiền bên ngoài đã hoàn tất qua endpoint `PUT /api/manager/refunds/{id}/manual-complete`.
 
 ## Kiểm thử
 
@@ -75,7 +71,7 @@ Test dùng H2 tạm, không cần MySQL. Các ca hiện có xác minh checkout h
 
 ## Kết nối frontend
 
-Thư mục `../frontend` hiện vẫn dùng dữ liệu demo trong localStorage. Để chạy end-to-end, thay các thao tác demo bằng API ở trên và map response `data` sang component. Frontend đã gọi REST API backend cho cart/checkout/order/payment. Các giá trị `paymentMethod` là `COD`, `VNPAY`, `PAYOS`; trang payOS hiển thị VietQR và polling `/api/payments/order/{orderId}/status` mỗi 2,5 giây.
+Thư mục `../frontend` đã gọi REST API backend cho cart/checkout/order/payment. Các giá trị `paymentMethod` là `COD`, `PAYOS`; trang payOS hiển thị VietQR và polling `/api/payments/order/{orderId}/status` mỗi 2,5 giây.
 
 ## Dữ liệu mẫu SQL
 
@@ -149,7 +145,7 @@ Mở `http://localhost:5173`, đăng nhập USER, thêm sản phẩm, checkout v
 8. Gửi lại cùng webhook; không có email, notification hoặc transaction nghiệp vụ thứ hai.
 9. Checkout COD để xác nhận luồng COD vẫn hoạt động.
 
-Các secret không được commit: `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `SMTP_PASSWORD`, `DB_PASSWORD`, `JWT_SECRET`, `VNPAY_HASH_SECRET`.
+Các secret không được commit: `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `SMTP_PASSWORD`, `DB_PASSWORD`, `JWT_SECRET`.
 ## Supplier registration, product approval và Cloudflare R2
 
 Áp dụng một lần migration database/migrations/V3__supplier_partner_product_approval.sql trên cleanmarket_db trước khi chạy phiên bản này.
