@@ -54,9 +54,9 @@ JWT_SECRET vẫn phải được cấu hình theo hướng dẫn của backend. 
 - QR truy xuất: GET /api/trace/CMDEMO-CARROT-001.
 - Giỏ hàng User đã có Cà chua sạch; đăng nhập User để checkout.
 - Đơn 1401 đã giao bằng COD. User có thể xem đơn, đánh giá mục đơn 1602; Manager có yêu cầu hoàn tiền thủ công 2301.
-- Đơn 1402 là payOS/PENDING để kiểm tra luồng chờ thanh toán.
+- Đơn 1402 là VNPAY/PENDING, có thể dùng endpoint tạo URL thanh toán khi cấu hình VNPAY Sandbox.
 - Đơn 1403 là COD gồm hai Partner; Partner 1 và Partner 2 có thể xử lý phần đơn 1503 và 1504.
-- Đơn 1404 là payOS/PAID **mô phỏng dữ liệu lịch sử**, không phải giao dịch thực do cổng thanh toán trả về.
+- Đơn 1404 là VNPAY/PAID **mô phỏng dữ liệu lịch sử**, không phải giao dịch thực do cổng VNPAY trả về.
 - Supplier 503 và Product 705 đang chờ Manager duyệt.
 
 Các ảnh và tài liệu dùng URL placeholder; chúng chỉ phục vụ trình bày. Voucher, notification, certification và một số bảng khác có dữ liệu mẫu để kiểm tra database, nhưng chưa có API nghiệp vụ tương ứng. Xem [mô hình dữ liệu](../backend/docs/data-model.md) để biết bảng nào đang được ứng dụng sử dụng.

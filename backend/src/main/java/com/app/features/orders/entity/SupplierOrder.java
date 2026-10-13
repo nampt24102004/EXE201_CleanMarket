@@ -14,7 +14,5 @@ public class SupplierOrder extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "order_id", nullable = false) private MarketOrder order;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "supplier_id", nullable = false) private Supplier supplier;
     @Column(nullable = false, precision = 15, scale = 2) private BigDecimal totalAmount;
-    @Column(precision = 15, scale = 2) private BigDecimal subtotal = BigDecimal.ZERO;
-    @Column(precision = 15, scale = 2) private BigDecimal discount = BigDecimal.ZERO;
     @Column(nullable = false, length = 24) private String status = SupplierOrderStatus.CREATED.name();
 }

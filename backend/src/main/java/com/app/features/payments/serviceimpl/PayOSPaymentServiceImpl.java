@@ -30,7 +30,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.payos.model.webhooks.Webhook;
-import com.app.features.promotions.service.VoucherService;
 
 @Service
 @Slf4j
@@ -44,15 +43,14 @@ public class PayOSPaymentServiceImpl implements PayOSPaymentService {
     private final PayOSPaymentProvider provider;
     private final OrderStatusHistoryService history;
     private final ApplicationEventPublisher events;
-    private final VoucherService voucherService;
 
     public PayOSPaymentServiceImpl(PaymentRepository payments, PaymentTransactionRepository transactions,
             OrderRepository orders, OrderItemRepository orderItems, NotificationRepository notifications,
             CurrentUser current, PayOSPaymentProvider provider, OrderStatusHistoryService history,
-            ApplicationEventPublisher events,VoucherService voucherService) {
+            ApplicationEventPublisher events) {
         this.payments = payments; this.transactions = transactions; this.orders = orders;
         this.orderItems = orderItems; this.notifications = notifications; this.current = current;
-        this.provider = provider; this.history = history; this.events = events;this.voucherService=voucherService;
+        this.provider = provider; this.history = history; this.events = events;
     }
 
     @Override
@@ -189,7 +187,6 @@ public class PayOSPaymentServiceImpl implements PayOSPaymentService {
         payment.setProviderTransactionNo(transactionId);
         MarketOrder order = payment.getOrder();
         order.setStatus("CONFIRMED");
-        voucherService.redeem(order.getId());
         history.record(order, "CONFIRMED", null, historyNote);
 
         Notification notification = new Notification();

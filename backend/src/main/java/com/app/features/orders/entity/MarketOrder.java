@@ -15,11 +15,7 @@ public class MarketOrder extends BaseEntity {
     @Column(nullable = false, length = 80) private String orderCode;
     @Column(precision = 15, scale = 2) private BigDecimal subtotal = BigDecimal.ZERO;
     @Column(precision = 15, scale = 2) private BigDecimal discount = BigDecimal.ZERO;
-    @Column(precision = 15, scale = 2) private BigDecimal partnerDiscount = BigDecimal.ZERO;
-    @Column(precision = 15, scale = 2) private BigDecimal platformDiscount = BigDecimal.ZERO;
     @Column(precision = 15, scale = 2) private BigDecimal shippingFee = BigDecimal.ZERO;
-    @Column(precision = 15, scale = 2) private BigDecimal shippingDiscount = BigDecimal.ZERO;
-    @Column(length = 160) private String shippingZone;
     @Column(nullable = false, precision = 15, scale = 2) private BigDecimal totalAmount;
     @Column(nullable = false, length = 24) private String status = OrderStatus.CREATED.name();
     @Column(nullable = false, length = 16) private String paymentMethod;

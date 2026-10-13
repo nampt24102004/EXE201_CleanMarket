@@ -1,5 +1,5 @@
 package com.app.features.orders.enums;
 
 public enum PaymentMethod {
-    COD, PAYOS
+    COD, VNPAY, PAYOS
 }

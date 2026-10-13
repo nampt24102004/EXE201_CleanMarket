@@ -13,9 +13,6 @@ import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.Setter;
-import com.app.features.promotions.enums.VoucherUsageStatus;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 
 @Entity
 @Table(name = "voucher_usages", uniqueConstraints = @UniqueConstraint(columnNames = {"voucher_id", "order_id"}))
@@ -35,5 +32,4 @@ public class VoucherUsage extends BaseEntity {
 
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal discountAmount;
-    @Enumerated(EnumType.STRING) @Column(length=20) private VoucherUsageStatus status=VoucherUsageStatus.RESERVED;
 }

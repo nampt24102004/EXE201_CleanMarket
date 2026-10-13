@@ -3,12 +3,12 @@
 USE cleanmarket_db;
 
 ALTER TABLE suppliers
-  ADD COLUMN IF NOT EXISTS email VARCHAR(190) NULL,
-  ADD COLUMN IF NOT EXISTS phone VARCHAR(30) NULL,
-  ADD COLUMN IF NOT EXISTS supplier_type VARCHAR(40) NULL,
-  ADD COLUMN IF NOT EXISTS rejection_reason VARCHAR(1000) NULL,
-  ADD COLUMN IF NOT EXISTS reviewed_by BIGINT NULL,
-  ADD COLUMN IF NOT EXISTS reviewed_at DATETIME(6) NULL;
+  ADD COLUMN email VARCHAR(190) NULL,
+  ADD COLUMN phone VARCHAR(30) NULL,
+  ADD COLUMN supplier_type VARCHAR(40) NULL,
+  ADD COLUMN rejection_reason VARCHAR(1000) NULL,
+  ADD COLUMN reviewed_by BIGINT NULL,
+  ADD COLUMN reviewed_at DATETIME(6) NULL;
 
 UPDATE suppliers s JOIN users u ON u.id=s.owner_id
 SET s.email=COALESCE(s.email,u.email),
@@ -21,13 +21,13 @@ ALTER TABLE suppliers
   MODIFY supplier_type VARCHAR(40) NOT NULL;
 
 ALTER TABLE supplier_documents
-  ADD COLUMN IF NOT EXISTS document_name VARCHAR(255) NULL,
-  ADD COLUMN IF NOT EXISTS original_file_name VARCHAR(255) NULL,
-  ADD COLUMN IF NOT EXISTS object_key VARCHAR(500) NULL,
-  ADD COLUMN IF NOT EXISTS rejection_reason VARCHAR(1000) NULL,
-  ADD COLUMN IF NOT EXISTS reviewed_by BIGINT NULL,
-  ADD COLUMN IF NOT EXISTS reviewed_at DATETIME(6) NULL,
-  ADD COLUMN IF NOT EXISTS uploaded_at DATETIME(6) NULL;
+  ADD COLUMN document_name VARCHAR(255) NULL,
+  ADD COLUMN original_file_name VARCHAR(255) NULL,
+  ADD COLUMN object_key VARCHAR(500) NULL,
+  ADD COLUMN rejection_reason VARCHAR(1000) NULL,
+  ADD COLUMN reviewed_by BIGINT NULL,
+  ADD COLUMN reviewed_at DATETIME(6) NULL,
+  ADD COLUMN uploaded_at DATETIME(6) NULL;
 
 UPDATE supplier_documents SET
   document_name=COALESCE(NULLIF(document_name,''),type),
@@ -39,10 +39,10 @@ ALTER TABLE supplier_documents
   MODIFY original_file_name VARCHAR(255) NOT NULL;
 
 ALTER TABLE products
-  ADD COLUMN IF NOT EXISTS origin VARCHAR(255) NULL,
-  ADD COLUMN IF NOT EXISTS rejection_reason VARCHAR(1000) NULL,
-  ADD COLUMN IF NOT EXISTS reviewed_by BIGINT NULL,
-  ADD COLUMN IF NOT EXISTS reviewed_at DATETIME(6) NULL;
+  ADD COLUMN origin VARCHAR(255) NULL,
+  ADD COLUMN rejection_reason VARCHAR(1000) NULL,
+  ADD COLUMN reviewed_by BIGINT NULL,
+  ADD COLUMN reviewed_at DATETIME(6) NULL;
 
 UPDATE products p JOIN suppliers s ON s.id=p.supplier_id
 SET p.origin=COALESCE(NULLIF(p.origin,''),s.location),
@@ -50,15 +50,15 @@ SET p.origin=COALESCE(NULLIF(p.origin,''),s.location),
 ALTER TABLE products MODIFY origin VARCHAR(255) NOT NULL;
 
 ALTER TABLE product_images
-  ADD COLUMN IF NOT EXISTS object_key VARCHAR(500) NULL,
-  ADD COLUMN IF NOT EXISTS original_file_name VARCHAR(255) NULL;
+  ADD COLUMN object_key VARCHAR(500) NULL,
+  ADD COLUMN original_file_name VARCHAR(255) NULL;
 
 ALTER TABLE certifications
-  ADD COLUMN IF NOT EXISTS issuer VARCHAR(160) NULL,
-  ADD COLUMN IF NOT EXISTS object_key VARCHAR(500) NULL,
-  ADD COLUMN IF NOT EXISTS rejection_reason VARCHAR(1000) NULL,
-  ADD COLUMN IF NOT EXISTS reviewed_by BIGINT NULL,
-  ADD COLUMN IF NOT EXISTS reviewed_at DATETIME(6) NULL;
+  ADD COLUMN issuer VARCHAR(160) NULL,
+  ADD COLUMN object_key VARCHAR(500) NULL,
+  ADD COLUMN rejection_reason VARCHAR(1000) NULL,
+  ADD COLUMN reviewed_by BIGINT NULL,
+  ADD COLUMN reviewed_at DATETIME(6) NULL;
 
 INSERT INTO roles(name,description,created_at,updated_at)
 SELECT 'USER','Khách hàng',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP

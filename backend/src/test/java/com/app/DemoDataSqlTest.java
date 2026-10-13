@@ -18,7 +18,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @SpringBootTest(properties = {
     "spring.datasource.url=jdbc:h2:mem:demo_seed;MODE=MySQL;DB_CLOSE_DELAY=-1",
     "spring.datasource.driver-class-name=org.h2.Driver",
-    "spring.jpa.hibernate.ddl-auto=create-drop"
+    "spring.jpa.hibernate.ddl-auto=create-drop",
+    "app.demo.seed=false"
 })
 class DemoDataSqlTest {
     @Autowired DataSource dataSource;
