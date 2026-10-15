@@ -5,7 +5,7 @@ import { useAuth } from '../../context/useAuth'
 import { LogIn, UserPlus, Store } from 'lucide-react'
 import BrandLogo from '../../components/common/BrandLogo'
 
-const homes = { USER: '/', PARTNER: '/partner', MANAGER: '/manager', ADMIN: '/admin' }
+import { canOpen, homeFor } from '../../utils/authRoutes'
 
 export default function AuthPage({ registerMode = false }) {
   const { login, loginWithGoogle, register, logout } = useAuth()
@@ -28,7 +28,7 @@ export default function AuthPage({ registerMode = false }) {
     setError('')
     try {
       const u = await loginWithGoogle(credential)
-      const target = location.state?.from || (supplierIntent ? '/partner/register' : homes[u.role] || '/')
+      const target = canOpen(location.state?.from, u) ? location.state.from : (supplierIntent ? '/partner/register' : homeFor(u))
       navigate(target, { replace: true })
     } catch (x) {
       setError([x.message, ...(x.errors || [])].filter(Boolean).join(' '))
@@ -113,7 +113,7 @@ export default function AuthPage({ registerMode = false }) {
         })
       }
       const u = await login(form.email, form.password)
-      navigate(location.state?.from || homes[u.role] || '/', { replace: true })
+      navigate(canOpen(location.state?.from, u) ? location.state.from : homeFor(u), { replace: true })
     } catch (x) {
       setUnverified(x.code === 'EMAIL_NOT_VERIFIED')
       setError([x.message, ...(x.errors || [])].filter(Boolean).join(' '))

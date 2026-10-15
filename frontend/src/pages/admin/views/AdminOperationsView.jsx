@@ -15,7 +15,9 @@ import {
   X,
   FileText,
   ExternalLink,
+  Eye,
 } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
 import { api } from '../../../services/apiClient'
 import formatCurrency from '../../../utils/formatCurrency'
 
@@ -39,6 +41,8 @@ const statusLabel = {
 }
 
 export default function AdminOperationsView({ subSection = 'suppliers', onCatalogChanged }) {
+  // Same view serves /manager and /admin; detail pages live under whichever area is open.
+  const base = useLocation().pathname.startsWith('/admin') ? '/admin' : '/manager'
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -220,7 +224,9 @@ export default function AdminOperationsView({ subSection = 'suppliers', onCatalo
                 {suppliers.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <strong className="text-dark fs-6">{item.name}</strong>
+                      <Link to={`${base}/suppliers/${item.id}`} className="text-decoration-none">
+                        <strong className="text-dark fs-6">{item.name}</strong>
+                      </Link>
                     </td>
                     <td className="small text-secondary">{item.location}</td>
                     <td>
@@ -309,7 +315,9 @@ export default function AdminOperationsView({ subSection = 'suppliers', onCatalo
                 {products.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <strong className="text-dark fs-6">{item.name}</strong>
+                      <Link to={`${base}/products/${item.id}`} className="text-decoration-none">
+                        <strong className="text-dark fs-6">{item.name}</strong>
+                      </Link>
                     </td>
                     <td className="small text-secondary">{item.supplierName}</td>
                     <td>
@@ -319,6 +327,13 @@ export default function AdminOperationsView({ subSection = 'suppliers', onCatalo
                     </td>
                     <td>
                       <div className="d-flex align-items-center gap-2">
+                        <Link
+                          to={`${base}/products/${item.id}`}
+                          className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 px-3 py-1"
+                        >
+                          <Eye size={14} />
+                          <span>Xem chi tiết</span>
+                        </Link>
                         <Button
                           variant="success"
                           size="sm"

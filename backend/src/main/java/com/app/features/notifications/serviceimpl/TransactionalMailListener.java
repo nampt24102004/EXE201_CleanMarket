@@ -22,6 +22,12 @@ public class TransactionalMailListener {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void notice(com.app.features.notifications.dto.MailEventDto.NoticeMailEvent event) {
+        try { mail.sendNotice(event); }
+        catch (RuntimeException ex) { log.error("Không thể gửi email thông báo \"{}\" tới {}", event.title(), event.email(), ex); }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void paymentSucceeded(PaymentSucceededMailEvent event) {
         try { mail.sendPaymentConfirmation(event); }
         catch (RuntimeException ex) { log.error("Không thể gửi email thanh toán đơn {}", event.orderCode(), ex); }

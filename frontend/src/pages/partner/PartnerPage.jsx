@@ -32,12 +32,18 @@ export default function PartnerPage({ onCatalogChanged }) {
 
   const loadData = useCallback(async () => {
     try {
+      const NO_PROFILE = Symbol('no-profile')
       const [profData, prodsData, ordersData] = await Promise.all([
-        api.get('/api/suppliers/my').catch(() => null),
+        api.get('/api/suppliers/my').catch((e) => (e.status === 404 ? NO_PROFILE : null)),
         api.get('/api/partner/products').catch(() => []),
         api.get('/api/partner/orders').catch(() => []),
       ])
 
+      // A partner account without a supplier profile cannot use the portal: send it to the application form.
+      if (profData === NO_PROFILE) {
+        navigate('/partner/register', { replace: true })
+        return
+      }
       setProfile(profData)
       setProducts(prodsData || [])
       setOrders(ordersData || [])
@@ -59,7 +65,7 @@ export default function PartnerPage({ onCatalogChanged }) {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [])
+  }, [navigate])
 
   useEffect(() => {
     void Promise.resolve().then(loadData)

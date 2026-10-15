@@ -56,6 +56,15 @@ public class R2StorageService implements StorageService {
         return new StoredFile(key, url, original);
     }
 
+    @Override public void delete(String objectKey) {
+        if (objectKey == null || objectKey.isBlank() || bucket == null || bucket.isBlank()) return;
+        try (S3Client client = s3()) {
+            client.deleteObject(software.amazon.awssdk.services.s3.model.DeleteObjectRequest.builder().bucket(bucket).key(objectKey).build());
+        } catch (Exception ex) {
+            org.slf4j.LoggerFactory.getLogger(R2StorageService.class).warn("Could not delete object {}: {}", objectKey, ex.getMessage());
+        }
+    }
+
     @Override public String readUrl(String objectKey) {
         ensureConfigured();
         try (S3Presigner presigner = presigner()) {

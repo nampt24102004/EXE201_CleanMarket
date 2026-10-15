@@ -26,4 +26,9 @@ public class SupplierDocument extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "reviewed_by") private UserAccount reviewedBy;
     private Instant reviewedAt;
     private Instant uploadedAt;
+
+    /** Expiry is derived from the date, so no background job is needed to flip the status. */
+    public boolean expiredOn(LocalDate day) { return status == SupplierDocumentStatus.EXPIRED || expiryDate != null && expiryDate.isBefore(day); }
+    /** Status as users should see it today: a passed expiry date wins over PENDING/APPROVED. */
+    public SupplierDocumentStatus effectiveStatus(LocalDate day) { return status != SupplierDocumentStatus.REJECTED && expiredOn(day) ? SupplierDocumentStatus.EXPIRED : status; }
 }

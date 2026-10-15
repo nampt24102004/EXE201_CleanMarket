@@ -79,7 +79,7 @@ export default function AdminSidebar({
         },
         {
           key: 'products',
-          label: 'Duyệt nông sản mới',
+          label: 'Danh sách & Duyệt sản phẩm',
           icon: PackageCheck,
           badge: summary?.pendingProducts > 0 ? summary.pendingProducts : null,
           badgeVariant: 'primary',

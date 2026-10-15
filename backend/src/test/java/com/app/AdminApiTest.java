@@ -90,6 +90,13 @@ class AdminApiTest {
         mvc.perform(get("/api/manager/orders").session(manager)).andExpect(status().isForbidden());
     }
 
+    @Test void partnerRoleOnlyComesFromAnApprovedSupplierProfile() throws Exception {
+        UserAccount buyer = account("nofarm-" + tag, "USER");
+        put(admin, "/api/admin/users/" + buyer.getId() + "/role", "{\"role\":\"PARTNER\"}")
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PARTNER_REQUIRES_SUPPLIER"));
+        assertEquals("USER", users.findById(buyer.getId()).orElseThrow().getRole());
+    }
+
     @Test void userSearchFiltersAndPaginates() throws Exception {
         account("findme1-" + tag, "USER"); account("findme2-" + tag, "USER");
         mvc.perform(get("/api/admin/users").param("q", "findme").param("size", "1").session(admin)).andExpect(status().isOk())

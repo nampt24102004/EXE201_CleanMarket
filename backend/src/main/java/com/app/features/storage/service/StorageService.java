@@ -8,4 +8,6 @@ public interface StorageService {
     record StoredFile(String objectKey, String fileUrl, String originalFileName) {}
     StoredFile upload(MultipartFile file, String folder, Set<String> allowedExtensions);
     String readUrl(String objectKey);
+    /** Best effort: a file that cannot be removed from the bucket must not block deleting its database record. */
+    void delete(String objectKey);
 }

@@ -25,6 +25,9 @@ public class GlobalExceptionHandler {
     ResponseEntity<ErrorBody> unreadable() { return ResponseEntity.badRequest().body(new ErrorBody(false, "INVALID_REQUEST_BODY", "Dữ liệu gửi lên không đúng định dạng", List.of())); }
     @ExceptionHandler(NoResourceFoundException.class)
     ResponseEntity<ErrorBody> notFound() { return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorBody(false, "NOT_FOUND", "Không tìm thấy đường dẫn", List.of())); }
+    // e.g. a request racing a logout: the session is gone, so this is "not signed in", not a server error.
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    ResponseEntity<ErrorBody> unauthenticated() { return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorBody(false, "UNAUTHENTICATED", "Vui lòng đăng nhập để tiếp tục", List.of())); }
     @ExceptionHandler(AccessDeniedException.class)
     ResponseEntity<ErrorBody> denied() { return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorBody(false, "FORBIDDEN", "Bạn không có quyền truy cập", List.of())); }
     @ExceptionHandler(DataIntegrityViolationException.class)

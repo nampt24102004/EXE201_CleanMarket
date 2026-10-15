@@ -1,6 +1,7 @@
 import { Button } from 'react-bootstrap'
 import { Menu, RefreshCw, Plus, QrCode } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import NotificationBell from '../../components/notifications/NotificationBell'
 
 const sectionTitles = {
   '': 'Bảng điều khiển & Hoạt động kinh doanh nhà vườn',
@@ -42,6 +43,7 @@ export default function PartnerTopbar({
       </div>
 
       <div className="d-flex align-items-center gap-2 gap-md-2">
+        <NotificationBell />
         <Button
           variant="light"
           size="sm"

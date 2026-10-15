@@ -25,5 +25,6 @@ public class PartnerProductController {
         @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate expiryDate,@RequestPart MultipartFile file){
         return service.uploadCertificate(id,certificateType,certificateNumber,issuer,issuedDate,expiryDate,file);
     }
+    @DeleteMapping("/{id}/certificates/{certificateId}") public ApiResponse<ProductView> deleteCertificate(@PathVariable Long id,@PathVariable Long certificateId){return service.deleteCertificate(id,certificateId);}
     @PostMapping("/{id}/submit") public ApiResponse<ProductView> submit(@PathVariable Long id){return service.submit(id);}
 }

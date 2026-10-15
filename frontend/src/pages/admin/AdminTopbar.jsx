@@ -15,7 +15,7 @@ const sectionTitles = {
   'settings': 'Cấu hình tham số hệ thống',
   'audit-logs': 'Nhật ký kiểm toán an toàn (Audit Logs)',
   'suppliers': 'Duyệt hồ sơ nhà cung cấp đối tác',
-  'products': 'Duyệt sản phẩm nông sản mới',
+  'products': 'Danh sách & Quản lý nông sản',
   'orders': 'Quản lý toàn bộ đơn hàng sàn',
   'complaints': 'Xử lý khiếu nại khách hàng',
   'refunds': 'Quản lý hoàn tiền thủ công',

@@ -2,6 +2,7 @@ import { Button, Container, Nav, Navbar } from 'react-bootstrap'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
 import { ShoppingBag, User, LogOut, Store, ShieldCheck, PhoneCall, Sparkles } from 'lucide-react'
+import NotificationBell from '../notifications/NotificationBell'
 import BrandLogo from '../common/BrandLogo'
 
 function Header({ cartCount }) {
@@ -108,6 +109,7 @@ function Header({ cartCount }) {
 
               {user ? (
                 <div className="d-flex align-items-center gap-2">
+                  <NotificationBell />
                   <Link
                     to={hasRole('USER') ? '/profile' : dashboard}
                     className="btn btn-light rounded-pill px-3 py-2 d-flex align-items-center gap-2 border fw-semibold text-dark text-decoration-none"

@@ -95,6 +95,13 @@ public class MailServiceImpl implements MailService {
         send(event.email(), "CleanMarket - Thanh toán đơn hàng thành công", layout("THANH TOÁN THÀNH CÔNG", content));
     }
 
+    @Override public void sendNotice(com.app.features.notifications.dto.MailEventDto.NoticeMailEvent event) {
+        String content = "<p>Xin chào <strong>" + esc(event.fullName()) + "</strong>,</p>"
+            + "<p>" + esc(event.message()).replace("\n", "<br>") + "</p>"
+            + (event.path() == null ? "" : button("Xem chi tiết", frontendUrl.replaceAll("/+$", "") + event.path()));
+        send(event.email(), event.title() + " - CleanMarket", layout(event.title(), content));
+    }
+
     private void send(String to, String subject, String html) {
         if (!deliveryEnabled) return;
         String senderAddress = fromEmail.isBlank() ? username : fromEmail;

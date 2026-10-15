@@ -51,10 +51,28 @@ export default function PartnerProfileView({ onCatalogChanged = () => {} }) {
   const [docForm, setDocForm] = useState({
     documentType: 'BUSINESS_LICENSE',
     documentName: '',
+    expiryDate: '',
     file: null,
   })
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const [docInputKey, setDocInputKey] = useState(0)
+  const [deletingId, setDeletingId] = useState(null)
+
+  // Rejected, expired or still-pending documents can be withdrawn; approved ones stay as the review record.
+  const handleDeleteDocument = async (item) => {
+    if (!window.confirm(`Xóa giấy tờ "${item.documentName}"?`)) return
+    setDeletingId(item.id)
+    setError('')
+    setNotice('')
+    try {
+      setProfile(await api.delete(`/api/partner/supplier-profile/documents/${item.id}`))
+      setNotice('Đã xóa giấy tờ.')
+    } catch (err) {
+      setError(err.message || 'Không thể xóa giấy tờ.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const loadProfile = useCallback(async () => {
     setLoading(true)
@@ -110,6 +128,7 @@ export default function PartnerProfileView({ onCatalogChanged = () => {} }) {
           ? docForm.documentName.trim()
           : documentTypeLabel[docForm.documentType]
       body.append('documentName', docName)
+      if (docForm.expiryDate) body.append('expiryDate', docForm.expiryDate)
       body.append('file', docForm.file)
 
       await api.post('/api/partner/supplier-profile/documents', body)
@@ -117,6 +136,7 @@ export default function PartnerProfileView({ onCatalogChanged = () => {} }) {
       setDocForm({
         documentType: 'BUSINESS_LICENSE',
         documentName: '',
+        expiryDate: '',
         file: null,
       })
       setDocInputKey((k) => k + 1)
@@ -236,6 +256,8 @@ export default function PartnerProfileView({ onCatalogChanged = () => {} }) {
                           ? { label: 'Đã duyệt', bg: 'success' }
                           : item.status === 'REJECTED'
                           ? { label: 'Từ chối', bg: 'danger' }
+                          : item.status === 'EXPIRED'
+                          ? { label: 'Hết hạn', bg: 'secondary' }
                           : { label: 'Chờ duyệt', bg: 'warning' }
 
                       return (
@@ -258,11 +280,27 @@ export default function PartnerProfileView({ onCatalogChanged = () => {} }) {
                           <div className="small text-secondary" style={{ fontSize: '0.75rem' }}>
                             {documentTypeLabel[item.documentType] || item.documentType} · {item.originalFileName}
                           </div>
-                          {item.rejectionReason && (
+                          {item.expiryDate && (
+                            <div className="small text-secondary" style={{ fontSize: '0.75rem' }}>
+                              Hiệu lực đến {new Date(`${item.expiryDate}T00:00:00`).toLocaleDateString('vi-VN')}
+                            </div>
+                          )}
+                          {item.status === 'REJECTED' && item.rejectionReason && (
                             <div className="small text-danger d-flex align-items-center gap-1 mt-1">
                               <AlertCircle size={12} />
                               <span>Lý do: {item.rejectionReason}</span>
                             </div>
+                          )}
+                          {item.status !== 'APPROVED' && profile?.status === 'APPROVED' && (
+                            <Button
+                              size="sm"
+                              variant="outline-danger"
+                              className="mt-2"
+                              disabled={deletingId === item.id}
+                              onClick={() => handleDeleteDocument(item)}
+                            >
+                              {deletingId === item.id ? 'Đang xóa...' : 'Xóa giấy tờ'}
+                            </Button>
                           )}
                         </div>
                       )
@@ -315,6 +353,17 @@ export default function PartnerProfileView({ onCatalogChanged = () => {} }) {
                       />
                     </Form.Group>
                   )}
+
+                  <Form.Group>
+                    <Form.Label className="small fw-bold">Hiệu lực đến (nếu có)</Form.Label>
+                    <Form.Control
+                      size="sm"
+                      type="date"
+                      min={new Date().toISOString().slice(0, 10)}
+                      value={docForm.expiryDate}
+                      onChange={(e) => setDocForm({ ...docForm, expiryDate: e.target.value })}
+                    />
+                  </Form.Group>
 
                   <Form.Group>
                     <Form.Label className="small fw-bold">Tệp tài liệu đính kèm *</Form.Label>
