@@ -1,9 +1,13 @@
 package com.app.features.orders.service;
 
 import com.app.common.ApiResponse;
+import com.app.common.PageResult;
+import com.app.features.orders.dto.ManagerOrderDto.OrderDetail;
 import com.app.features.orders.dto.OrderServiceDto;
-import java.util.*;
+import java.time.LocalDate;
 
 public interface ManagerOrderService {
-    public ApiResponse<List<OrderServiceDto.OrderView>> list();
+    ApiResponse<PageResult<OrderServiceDto.OrderView>> list(String status, String paymentMethod, String q, LocalDate from, LocalDate to, Integer page, Integer size);
+    ApiResponse<OrderDetail> detail(Long id);
+    ApiResponse<OrderServiceDto.OrderView> cancel(Long id, String reason);
 }

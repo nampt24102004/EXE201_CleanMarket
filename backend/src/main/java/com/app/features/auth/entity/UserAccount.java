@@ -15,4 +15,5 @@ public class UserAccount extends BaseEntity {
     @Column(length = 30) private String phone;
     @Column(nullable = false, length = 20) private String role = UserRole.USER.name();
     @Column(nullable = false) private boolean enabled = true;
+    @org.hibernate.annotations.ColumnDefault("false") @Column(nullable = false) private boolean locked = false;
 }

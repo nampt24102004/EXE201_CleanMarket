@@ -10,5 +10,6 @@ public interface OrderService {
     OrderView ownedByCode(String code);
     List<OrderView> mine();
     OrderView cancel(Long id);
+    OrderView cancelByStaff(Long id, String reason);
     OrderView view(MarketOrder order);
 }

@@ -8,5 +8,6 @@ import vn.payos.model.webhooks.Webhook;
 public interface PayOSPaymentService {
     CreateResponse create(Long orderId);
     StatusResponse status(Long orderId);
+    StatusResponse reconcile(Long paymentId);
     WebhookResponse handleWebhook(Webhook webhook);
 }

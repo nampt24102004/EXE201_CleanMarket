@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Alert, Badge, Button, Col, Container, Form, InputGroup, Row, Spinner, Stack } from 'react-bootstrap'
-import PageTitle from '../../components/common/PageTitle'
 import PaymentMethod from '../../components/order/PaymentMethod'
 import OrderSummary from '../../components/order/OrderSummary'
 import OrderInfoPage from '../order-info/OrderInfoPage'
 import { api } from '../../services/apiClient'
+import { Ticket, ArrowRight, Truck } from 'lucide-react'
 
 function CheckoutPage({
   cartItems,
@@ -45,9 +45,20 @@ function CheckoutPage({
     if (!shippingAddress) return undefined
     const timer = setTimeout(async () => {
       setQuoting(true); setQuoteError('')
-      try { setQuote(await api.post('/api/checkout/quote', { address: shippingAddress, platformVoucherCode: platformCode || null, partnerVoucherCodes: Object.values(partnerCodes).filter(Boolean) })) }
-      catch (error) { setQuote(null); setQuoteError(error.message) }
-      finally { setQuoting(false) }
+      try {
+        setQuote(
+          await api.post('/api/checkout/quote', {
+            address: shippingAddress,
+            platformVoucherCode: platformCode || null,
+            partnerVoucherCodes: Object.values(partnerCodes).filter(Boolean),
+          })
+        )
+      } catch (error) {
+        setQuote(null)
+        setQuoteError(error.message)
+      } finally {
+        setQuoting(false)
+      }
     }, 400)
     return () => clearTimeout(timer)
   }, [shippingAddress, platformCode, partnerCodes])
@@ -55,20 +66,24 @@ function CheckoutPage({
   const activeQuote = shippingAddress ? quote : null
   const formErrors = [...validationErrors, ...localErrors]
   const normalizeCode = (value) => value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 80)
+
   const changeZone = (code) => {
     setShippingZoneCode(code)
     setLocalErrors([])
     onCustomerInfoChange({ ...customerInfo, address: '' })
   }
+
   const applyPlatformCode = () => {
     const code = platformInput.trim().toUpperCase()
     setPlatformCode(code)
     setPlatformInput(code)
   }
+
   const applyPartnerCode = (supplierId) => {
     const code = (partnerInputs[supplierId] || '').trim().toUpperCase()
     setPartnerCodes((current) => ({ ...current, [supplierId]: code }))
   }
+
   const submit = () => {
     const errors = []
     if (!shippingZoneCode) errors.push('Vui lòng chọn khu vực giao hàng.')
@@ -81,19 +96,41 @@ function CheckoutPage({
       partnerVoucherCodes: Object.values(partnerCodes).filter(Boolean),
     })
   }
+
   return (
     <Container className="py-4 py-md-5">
-      <PageTitle
-        eyebrow="Thanh toán"
-        title="Hoàn tất thông tin đặt hàng"
-        description="Điền đầy đủ thông tin giao hàng và chọn cách thanh toán phù hợp."
-      />
-      {validationErrors.includes('Vui lòng chọn phương thức thanh toán.') ? (
-        <Alert variant="warning">Bạn cần chọn phương thức thanh toán trước khi xác nhận.</Alert>
-      ) : null}
-      {validationErrors.includes('Giỏ hàng của bạn đang trống.') ? (
-        <Alert variant="warning">Giỏ hàng của bạn đang trống, vui lòng thêm sản phẩm trước khi thanh toán.</Alert>
-      ) : null}
+      {/* Step Indicator */}
+      <div className="d-flex align-items-center justify-content-center gap-3 mb-4">
+        <span className="badge bg-light text-muted border rounded-pill px-3 py-2">
+          1. Giỏ hàng
+        </span>
+        <span className="text-muted">➔</span>
+        <span className="badge bg-success rounded-pill px-3 py-2 fw-bold d-flex align-items-center gap-1">
+          <Truck size={14} /> 2. Địa chỉ & Thanh toán
+        </span>
+        <span className="text-muted">➔</span>
+        <span className="badge bg-light text-muted border rounded-pill px-3 py-2">
+          3. Hoàn tất
+        </span>
+      </div>
+
+      <div className="mb-4">
+        <div className="hero-kicker mb-1">Xác nhận thanh toán</div>
+        <h1 className="section-title mb-1">
+          Thông tin giao hàng & <span className="gradient-text">đặt hàng</span>
+        </h1>
+        <p className="text-secondary mb-0">
+          Điền đầy đủ địa chỉ nhận hàng và chọn cách thanh toán phù hợp.
+        </p>
+      </div>
+
+      {validationErrors.includes('Vui lòng chọn phương thức thanh toán.') && (
+        <Alert variant="warning" className="rounded-4">Bạn cần chọn phương thức thanh toán trước khi xác nhận.</Alert>
+      )}
+      {validationErrors.includes('Giỏ hàng của bạn đang trống.') && (
+        <Alert variant="warning" className="rounded-4">Giỏ hàng của bạn đang trống, vui lòng thêm sản phẩm trước khi thanh toán.</Alert>
+      )}
+
       <Row className="g-4">
         <Col lg={7}>
           <Stack gap={4}>
@@ -107,51 +144,130 @@ function CheckoutPage({
               shippingZonesLoading={shippingZonesLoading}
               shippingZonesError={shippingZonesError}
             />
+
+            {/* Voucher Box */}
             <div className="detail-card p-4">
-              <h2 className="h4">Mã giảm giá</h2>
+              <div className="d-flex align-items-center gap-2 mb-3">
+                <Ticket size={20} className="text-success" />
+                <h4 className="fw-bold mb-0">Mã giảm giá & Ưu đãi</h4>
+              </div>
+
               <Form.Group className="mb-3">
-                <Form.Label>Voucher CleanMarket</Form.Label>
+                <Form.Label className="small fw-semibold">Voucher hệ thống CleanMarket</Form.Label>
                 <InputGroup>
                   <Form.Control
                     value={platformInput}
                     onChange={(event) => setPlatformInput(normalizeCode(event.target.value))}
-                    onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); applyPlatformCode() } }}
-                    placeholder="Nhập mã, ví dụ CMNEW1"
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        applyPlatformCode()
+                      }
+                    }}
+                    placeholder="Nhập mã (ví dụ: CMNEW1)"
+                    className="rounded-start-3"
                   />
-                  <Button variant="outline-success" onClick={applyPlatformCode} disabled={!platformInput.trim()}>Áp dụng</Button>
-                  {platformCode && <Button variant="outline-secondary" onClick={() => { setPlatformCode(''); setPlatformInput('') }}>Bỏ mã</Button>}
+                  <Button
+                    variant="outline-success"
+                    onClick={applyPlatformCode}
+                    disabled={!platformInput.trim()}
+                    className="fw-bold px-3"
+                  >
+                    Áp dụng
+                  </Button>
+                  {platformCode && (
+                    <Button
+                      variant="outline-secondary"
+                      onClick={() => {
+                        setPlatformCode('')
+                        setPlatformInput('')
+                      }}
+                    >
+                      Bỏ mã
+                    </Button>
+                  )}
                 </InputGroup>
-                <Form.Text>Mã áp dụng cho mọi khách hàng; mỗi tài khoản được sử dụng từng mã một lần.</Form.Text>
-                {platformCode && activeQuote && <div className="mt-2"><Badge bg="success">Đã áp dụng {platformCode}</Badge></div>}
+                <Form.Text className="text-muted small">
+                  Mỗi tài khoản được sử dụng một lần mã ưu đãi tân khách hàng hoặc chiến dịch.
+                </Form.Text>
+                {platformCode && activeQuote && (
+                  <div className="mt-2">
+                    <Badge bg="success" pill className="px-3 py-1">
+                      ✓ Đã áp dụng mã {platformCode}
+                    </Badge>
+                  </div>
+                )}
               </Form.Group>
+
               {activeQuote?.suppliers?.map((supplier) => (
                 <Form.Group className="mb-3" key={supplier.supplierId}>
-                  <Form.Label>Voucher của {supplier.supplierName}</Form.Label>
+                  <Form.Label className="small fw-semibold">Voucher riêng của {supplier.supplierName}</Form.Label>
                   <InputGroup>
                     <Form.Control
                       value={partnerInputs[supplier.supplierId] || ''}
-                      onChange={(event) => setPartnerInputs((current) => ({ ...current, [supplier.supplierId]: normalizeCode(event.target.value) }))}
+                      onChange={(event) =>
+                        setPartnerInputs((current) => ({
+                          ...current,
+                          [supplier.supplierId]: normalizeCode(event.target.value),
+                        }))
+                      }
                       placeholder="Nhập mã nhà cung cấp"
+                      className="rounded-start-3"
                     />
-                    <Button variant="outline-success" onClick={() => applyPartnerCode(supplier.supplierId)} disabled={!partnerInputs[supplier.supplierId]?.trim()}>Áp dụng</Button>
-                    {partnerCodes[supplier.supplierId] && <Button variant="outline-secondary" onClick={() => { setPartnerCodes((current) => ({ ...current, [supplier.supplierId]: '' })); setPartnerInputs((current) => ({ ...current, [supplier.supplierId]: '' })) }}>Bỏ mã</Button>}
+                    <Button
+                      variant="outline-success"
+                      onClick={() => applyPartnerCode(supplier.supplierId)}
+                      disabled={!partnerInputs[supplier.supplierId]?.trim()}
+                      className="fw-bold px-3"
+                    >
+                      Áp dụng
+                    </Button>
+                    {partnerCodes[supplier.supplierId] && (
+                      <Button
+                        variant="outline-secondary"
+                        onClick={() => {
+                          setPartnerCodes((current) => ({ ...current, [supplier.supplierId]: '' }))
+                          setPartnerInputs((current) => ({ ...current, [supplier.supplierId]: '' }))
+                        }}
+                      >
+                        Bỏ mã
+                      </Button>
+                    )}
                   </InputGroup>
                 </Form.Group>
               ))}
-              {quoting && <div><Spinner size="sm" /> Đang tính lại...</div>}{shippingAddress && quoteError && <Alert variant="warning" className="mb-0">{quoteError}</Alert>}
+
+              {quoting && (
+                <div className="text-success small fw-semibold d-flex align-items-center gap-2 mt-2">
+                  <Spinner size="sm" /> Đang tính toán phí ship & giảm giá...
+                </div>
+              )}
+              {shippingAddress && quoteError && (
+                <Alert variant="warning" className="rounded-3 mt-3 mb-0">
+                  {quoteError}
+                </Alert>
+              )}
             </div>
+
             <PaymentMethod value={paymentMethod} onChange={onPaymentMethodChange} />
           </Stack>
         </Col>
+
         <Col lg={5}>
-          <Stack gap={4}>
+          <Stack gap={4} className="sticky-top" style={{ top: '100px' }}>
             <OrderSummary
               cartItems={cartItems}
               paymentMethod={paymentMethod}
               quote={activeQuote}
             />
-            <Button className="primary-btn py-3" size="lg" onClick={submit} disabled={!activeQuote || quoting}>
-              Xác nhận đặt hàng
+            <Button
+              className="primary-btn py-3 fs-6 w-100 fw-bold"
+              size="lg"
+              onClick={submit}
+              disabled={!activeQuote || quoting}
+            >
+              <span>Xác nhận & Hoàn tất đơn hàng</span>
+              <ArrowRight size={18} />
             </Button>
           </Stack>
         </Col>

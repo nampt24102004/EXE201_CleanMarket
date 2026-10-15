@@ -17,6 +17,8 @@ public interface SupplierService {
     ApiResponse<SupplierView> detail(Long id);
     ApiResponse<SupplierView> approve(Long id);
     ApiResponse<SupplierView> reject(Long id, DecisionRequest request);
+    ApiResponse<SupplierView> suspend(Long id, DecisionRequest request);
+    ApiResponse<SupplierView> reactivate(Long id);
     ApiResponse<SupplierView> approveDocument(Long supplierId, Long documentId);
     ApiResponse<SupplierView> rejectDocument(Long supplierId, Long documentId, DecisionRequest request);
 }

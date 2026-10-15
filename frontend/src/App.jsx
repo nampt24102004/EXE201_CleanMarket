@@ -18,13 +18,15 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 import TracePage from './pages/trace/TracePage'
 import SupplierPage from './pages/suppliers/SupplierPage'
-import PortalPage from './pages/portal/PortalPage'
+import AdminPage from './pages/admin/AdminPage'
+import StaffPage from './pages/staff/StaffPage'
+import PartnerPage from './pages/partner/PartnerPage'
 import { MyOrdersPage, OrderDetailPage, PaymentResultPage, ProfilePage } from './pages/user/UserPages'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PayOSPaymentPage from './pages/payment/PayOSPaymentPage'
 import SupplierRegistrationPage from './pages/supplier-registration/SupplierRegistrationPage'
-import { PartnerProductFormPage, PartnerProductsPage } from './pages/partner-products/PartnerProductPages'
-import { ApprovalDetailPage, ApprovalListPage } from './pages/approvals/ApprovalPages'
+import { PartnerProductFormPage } from './pages/partner-products/PartnerProductPages'
+import { ApprovalDetailPage } from './pages/approvals/ApprovalPages'
 import { api } from './services/apiClient'
 
 const blankCustomer = { fullName: '', phone: '', email: '', address: '', note: '' }
@@ -235,24 +237,52 @@ function AppContent() {
           showError(caught)
           navigate(`/payment/payos?orderId=${order.id}`)
         }
-      } else if (paymentMethod === 'vnpay') {
-        try {
-          const payment = await api.post('/api/payments/vnpay/create', { orderId: order.id })
-          window.location.assign(payment.paymentUrl)
-        } catch (caught) {
-          showError(caught)
-          navigate(`/payment-result?orderCode=${order.orderCode}`)
-        }
       } else navigate('/order-success')
     } catch (caught) { showError(caught) }
   }
 
   const protect = (roles, element) => <ProtectedRoute roles={roles}>{element}</ProtectedRoute>
 
+  const isAdminRoute = location.pathname.startsWith('/admin')
+  if (isAdminRoute) {
+    return (
+      <Routes>
+        <Route path="/admin" element={protect(['ADMIN'], <AdminPage onCatalogChanged={loadCatalog} />)} />
+        <Route path="/admin/suppliers/:id" element={protect(['ADMIN'], <ApprovalDetailPage kind="suppliers" base="/admin" />)} />
+        <Route path="/admin/products/:id" element={protect(['ADMIN'], <ApprovalDetailPage kind="products" base="/admin" />)} />
+        <Route path="/admin/:section" element={protect(['ADMIN'], <AdminPage onCatalogChanged={loadCatalog} />)} />
+      </Routes>
+    )
+  }
+
+  const isManagerRoute = location.pathname.startsWith('/manager')
+  if (isManagerRoute) {
+    return (
+      <Routes>
+        <Route path="/manager" element={protect(['MANAGER', 'ADMIN'], <StaffPage onCatalogChanged={loadCatalog} />)} />
+        <Route path="/manager/suppliers/:id" element={protect(['MANAGER', 'ADMIN'], <ApprovalDetailPage kind="suppliers" base="/manager" />)} />
+        <Route path="/manager/products/:id" element={protect(['MANAGER', 'ADMIN'], <ApprovalDetailPage kind="products" base="/manager" />)} />
+        <Route path="/manager/:section" element={protect(['MANAGER', 'ADMIN'], <StaffPage onCatalogChanged={loadCatalog} />)} />
+      </Routes>
+    )
+  }
+
+  const isPartnerRoute = location.pathname.startsWith('/partner') && location.pathname !== '/partner/register'
+  if (isPartnerRoute) {
+    return (
+      <Routes>
+        <Route path="/partner" element={protect(['PARTNER'], <PartnerPage onCatalogChanged={loadCatalog} />)} />
+        <Route path="/partner/products/create" element={protect(['PARTNER'], <PartnerProductFormPage />)} />
+        <Route path="/partner/products/:id/edit" element={protect(['PARTNER'], <PartnerProductFormPage />)} />
+        <Route path="/partner/:section" element={protect(['PARTNER'], <PartnerPage onCatalogChanged={loadCatalog} />)} />
+      </Routes>
+    )
+  }
+
   return <div className="app-shell"><Header cartCount={cartItems.length} /><div className="page-spacer">
     {apiError && !(isPartner && apiError === 'Bạn không có quyền truy cập') && <Container className="pt-3"><Alert variant="danger" dismissible onClose={() => setApiError('')}><strong>Lỗi API:</strong> {apiError}</Alert></Container>}
     {catalogLoading ? <Container className="py-5 text-center"><Spinner animation="border" variant="success" /><div className="mt-2">Đang tải dữ liệu từ backend...</div></Container> : <Routes>
-      <Route path="/" element={<HomePage products={products} onSelectProduct={selectProduct} onAddToCart={addToCart} onOpenProducts={() => navigate('/products')} />} />
+      <Route path="/" element={<HomePage products={products} suppliers={suppliers} onSelectProduct={selectProduct} onAddToCart={addToCart} onOpenProducts={() => navigate('/products')} />} />
       <Route path="/products" element={<ProductsPage products={products} onSelectProduct={selectProduct} onAddToCart={addToCart} />} />
       <Route path="/products/:id" element={<ProductRoute products={products} quantity={quantity} setQuantity={setQuantity} onAddToCart={addToCart} onBuyNow={buyNow} />} />
       <Route path="/product-detail" element={<Navigate to="/products" replace />} />
@@ -270,20 +300,6 @@ function AppContent() {
       <Route path="/orders/:orderCode" element={protect(['USER'], <OrderDetailPage orders={orders} onOrdersChanged={loadOrders} />)} />
       <Route path="/profile" element={protect(['USER'], <ProfilePage />)} />
       <Route path="/partner/register" element={protect(['USER'], <SupplierRegistrationPage />)} />
-      <Route path="/partner/products" element={protect(['PARTNER'], <PartnerProductsPage />)} />
-      <Route path="/partner/products/create" element={protect(['PARTNER'], <PartnerProductFormPage />)} />
-      <Route path="/partner/products/:id/edit" element={protect(['PARTNER'], <PartnerProductFormPage />)} />
-      <Route path="/manager/suppliers" element={protect(['MANAGER','ADMIN'], <ApprovalListPage kind="suppliers" />)} />
-      <Route path="/manager/suppliers/:id" element={protect(['MANAGER','ADMIN'], <ApprovalDetailPage kind="suppliers" />)} />
-      <Route path="/manager/products" element={protect(['MANAGER','ADMIN'], <ApprovalListPage kind="products" />)} />
-      <Route path="/manager/products/:id" element={protect(['MANAGER','ADMIN'], <ApprovalDetailPage kind="products" />)} />
-      <Route path="/admin/suppliers" element={protect(['ADMIN'], <ApprovalListPage kind="suppliers" base="/admin" />)} />
-      <Route path="/admin/suppliers/:id" element={protect(['ADMIN'], <ApprovalDetailPage kind="suppliers" base="/admin" />)} />
-      <Route path="/admin/products" element={protect(['ADMIN'], <ApprovalListPage kind="products" base="/admin" />)} />
-      <Route path="/admin/products/:id" element={protect(['ADMIN'], <ApprovalDetailPage kind="products" base="/admin" />)} />
-      <Route path="/partner" element={protect(['PARTNER'], <PortalPage role="PARTNER" onCatalogChanged={loadCatalog} />)} /><Route path="/partner/:section" element={protect(['PARTNER'], <PortalPage role="PARTNER" onCatalogChanged={loadCatalog} />)} />
-      <Route path="/manager" element={protect(['MANAGER'], <PortalPage role="MANAGER" onCatalogChanged={loadCatalog} />)} /><Route path="/manager/:section" element={protect(['MANAGER'], <PortalPage role="MANAGER" onCatalogChanged={loadCatalog} />)} />
-      <Route path="/admin" element={protect(['ADMIN'], <PortalPage role="ADMIN" onCatalogChanged={loadCatalog} />)} /><Route path="/admin/:section" element={protect(['ADMIN'], <PortalPage role="ADMIN" onCatalogChanged={loadCatalog} />)} />
       <Route path="/403" element={<Container className="py-5"><Alert variant="danger">Bạn không có quyền truy cập khu vực này.</Alert></Container>} />
       <Route path="*" element={<NotFoundPage currentPath={location.pathname} onBackHome={() => navigate('/')} />} />
     </Routes>}

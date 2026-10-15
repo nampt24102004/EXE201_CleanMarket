@@ -13,6 +13,6 @@ public class CurrentUser {
     public UserAccount get() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) throw BusinessException.forbidden();
-        return users.findByEmailIgnoreCase(auth.getName()).filter(UserAccount::isEnabled).orElseThrow(BusinessException::forbidden);
+        return users.findByEmailIgnoreCase(auth.getName()).filter(AccountRoles::active).orElseThrow(BusinessException::forbidden);
     }
 }

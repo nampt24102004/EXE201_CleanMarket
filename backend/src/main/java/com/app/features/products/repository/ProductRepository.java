@@ -11,5 +11,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findPublic();
     List<Product> findBySupplierId(Long supplierId);
     List<Product> findByApprovalStatus(String status);
+    long countByApprovalStatus(String status);
     @Lock(LockModeType.PESSIMISTIC_WRITE) @Query("select p from Product p where p.id = :id") Optional<Product> lockById(@Param("id") Long id);
 }

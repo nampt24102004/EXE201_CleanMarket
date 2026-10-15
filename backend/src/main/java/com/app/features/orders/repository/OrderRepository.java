@@ -7,5 +7,8 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;
 
-public interface OrderRepository extends JpaRepository<MarketOrder, Long> { List<MarketOrder> findByUserIdOrderByCreatedAtDesc(Long userId); Optional<MarketOrder> findByOrderCode(String orderCode);
+public interface OrderRepository extends JpaRepository<MarketOrder, Long>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<MarketOrder> { List<MarketOrder> findByUserIdOrderByCreatedAtDesc(Long userId); Optional<MarketOrder> findByOrderCode(String orderCode);
+    long countByUserId(Long userId);
+    @Query("select coalesce(sum(o.totalAmount), 0) from MarketOrder o where o.user.id = :userId and o.status <> 'CANCELLED'") java.math.BigDecimal sumSpentByUser(@Param("userId") Long userId);
+    @Query("select o.status, count(o) from MarketOrder o group by o.status") List<Object[]> countByStatus();
     @Lock(LockModeType.PESSIMISTIC_WRITE) @Query("select o from MarketOrder o where o.id = :id") Optional<MarketOrder> lockById(@Param("id") Long id); }

@@ -44,6 +44,8 @@ public class FeedbackServiceImpl implements FeedbackService {
     }
     @Transactional public ApiResponse<ComplaintView> complaint(@Valid ComplaintRequest request) {
         UserAccount user = current.get(); MarketOrder order = orders.findById(request.orderId()).orElseThrow(() -> BusinessException.missing("Đơn hàng")); if (!order.getUser().getId().equals(user.getId())) throw BusinessException.forbidden();
+        if ("CANCELLED".equals(order.getStatus())) throw BusinessException.bad("ORDER_CANCELLED", "Không thể khiếu nại đơn hàng đã hủy");
+        if (complaints.existsByOrderIdAndStatus(order.getId(), "PENDING")) throw BusinessException.conflict("COMPLAINT_PENDING", "Đơn hàng đã có khiếu nại đang chờ xử lý");
         Complaint c = new Complaint(); c.setUser(user); c.setOrder(order); c.setReason(request.reason().trim()); c.setDescription(request.description().trim()); complaints.save(c); return ApiResponse.ok(complaint(c));
     }
     public ApiResponse<List<ComplaintView>> myComplaints() { return ApiResponse.ok(complaints.findByUserIdOrderByCreatedAtDesc(current.get().getId()).stream().map(this::complaint).toList()); }

@@ -1,8 +1,8 @@
-import { Alert, Button, Card, Col, Container, Image, ListGroup, Row, Stack } from 'react-bootstrap'
-import PageTitle from '../../components/common/PageTitle'
+import { Button, Card, Col, Container, Image, ListGroup, Row, Stack } from 'react-bootstrap'
 import QuantitySelector from '../../components/product/QuantitySelector'
 import formatCurrency from '../../utils/formatCurrency'
 import formatQuantity from '../../utils/formatQuantity'
+import { ShoppingBag, ArrowRight, Trash2, ShieldCheck, Truck } from 'lucide-react'
 
 function CartPage({
   cartItems,
@@ -13,26 +13,59 @@ function CartPage({
 }) {
   const totalAmount = cartItems.reduce(
     (total, item) => total + item.product.price * item.quantity,
-    0,
+    0
   )
+
+  const isFreeShip = totalAmount >= 200000
 
   return (
     <Container className="py-4 py-md-5">
-      <PageTitle
-        eyebrow="Giỏ hàng"
-        title="Chọn nhiều sản phẩm trong cùng một đơn"
-        description="Bạn có thể thêm nhiều mặt hàng, chỉnh số lượng từng món rồi mới chuyển sang bước thanh toán."
-      />
+      {/* Step Indicator */}
+      <div className="d-flex align-items-center justify-content-center gap-3 mb-4">
+        <span className="badge bg-success rounded-pill px-3 py-2 fw-bold d-flex align-items-center gap-1">
+          <ShoppingBag size={14} /> 1. Giỏ hàng ({cartItems.length})
+        </span>
+        <span className="text-muted">➔</span>
+        <span className="badge bg-light text-muted border rounded-pill px-3 py-2">
+          2. Địa chỉ & Thanh toán
+        </span>
+        <span className="text-muted">➔</span>
+        <span className="badge bg-light text-muted border rounded-pill px-3 py-2">
+          3. Hoàn tất
+        </span>
+      </div>
+
+      <div className="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-4">
+        <div>
+          <div className="hero-kicker mb-2">Giỏ hàng CleanMarket</div>
+          <h1 className="section-title mb-1">
+            Nông sản đã chọn cho <span className="gradient-text">bữa ăn hôm nay</span>
+          </h1>
+          <p className="text-secondary mb-0">
+            Kiểm tra số lượng và danh sách sản phẩm trước khi chuyển sang bước thanh toán.
+          </p>
+        </div>
+      </div>
 
       {cartItems.length === 0 ? (
-        <Card className="detail-card border-0 p-4 text-center">
+        <Card className="detail-card border-0 p-5 text-center my-4">
           <Card.Body>
-            <Alert variant="light" className="mb-4">
-              Giỏ hàng của bạn đang trống. Hãy thêm vài sản phẩm sạch cho bữa ăn hôm nay.
-            </Alert>
-            <Button className="primary-btn" onClick={onOpenProducts}>
-              Đi đến trang Sản phẩm
-            </Button>
+            <div className="text-center mb-4">
+              <div
+                className="mx-auto rounded-circle bg-light d-flex align-items-center justify-content-center text-muted mb-3"
+                style={{ width: '80px', height: '80px' }}
+              >
+                <ShoppingBag size={38} className="opacity-50 text-success" />
+              </div>
+              <h4 className="fw-bold mb-2">Giỏ hàng của bạn đang trống</h4>
+              <p className="text-secondary mb-4 max-w-500 mx-auto">
+                Hãy ghé qua danh mục nông sản sạch chuẩn VietGAP để chọn cho gia đình những bữa ăn thơm ngon, an lành.
+              </p>
+              <Button className="primary-btn btn-lg" onClick={onOpenProducts}>
+                <span>Khám phá nông sản ngay</span>
+                <ArrowRight size={18} />
+              </Button>
+            </div>
           </Card.Body>
         </Card>
       ) : (
@@ -40,6 +73,20 @@ function CartPage({
           <Col lg={8}>
             <Card className="detail-card border-0 p-3 p-md-4">
               <Card.Body>
+                {/* Free Ship Notification */}
+                <div
+                  className={`p-3 rounded-4 mb-3 d-flex align-items-center gap-2 ${
+                    isFreeShip ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-light border'
+                  }`}
+                >
+                  <Truck size={20} className={isFreeShip ? 'text-success' : 'text-muted'} />
+                  <span className="small fw-semibold">
+                    {isFreeShip
+                      ? '🎉 Chúc mừng! Đơn hàng của bạn đủ điều kiện miễn phí vận chuyển 2H.'
+                      : `Mua thêm ${formatCurrency(200000 - totalAmount)} để được Miễn phí giao hàng 2 giờ.`}
+                  </span>
+                </div>
+
                 <ListGroup variant="flush">
                   {cartItems.map((item) => (
                     <ListGroup.Item
@@ -48,22 +95,23 @@ function CartPage({
                     >
                       <div className="d-flex flex-column flex-md-row gap-3 align-items-md-center">
                         <Image
-                          src={item.product.image}
+                          src={item.product.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80'}
                           alt={item.product.name}
                           className="cart-thumb"
                           rounded
                         />
                         <div className="flex-grow-1">
-                          <div className="fw-bold">{item.product.name}</div>
-                          <div className="text-secondary small mb-2">
-                            {item.product.origin}
+                          <h6 className="fw-bold mb-1 text-dark">{item.product.name}</h6>
+                          <div className="text-muted small mb-1">
+                            {item.product.origin || item.product.supplierName || 'Nông trại chuẩn VietGAP'}
                           </div>
-                          <div className="text-success fw-semibold">
-                            {formatCurrency(item.product.price)} / {item.product.unit}
+                          <div className="text-success fw-bold">
+                            {formatCurrency(item.product.price)} <span className="small text-muted fw-normal">/ {item.product.unit}</span>
                           </div>
                         </div>
+
                         <div>
-                          <div className="small text-secondary mb-2">Số lượng</div>
+                          <div className="small text-muted mb-1">Số lượng ({item.product.unit})</div>
                           <QuantitySelector
                             quantity={item.quantity}
                             unit={item.product.unit}
@@ -72,18 +120,20 @@ function CartPage({
                             }
                           />
                         </div>
+
                         <div className="text-md-end">
-                          <div className="small text-secondary">Thành tiền</div>
-                          <div className="fw-bold mb-3">
+                          <div className="small text-muted mb-1">Thành tiền</div>
+                          <div className="fw-bold fs-5 text-dark mb-2">
                             {formatCurrency(item.product.price * item.quantity)}
                           </div>
                           <Button
                             variant="outline-danger"
                             size="sm"
-                            className="rounded-pill"
+                            className="rounded-pill px-3 d-inline-flex align-items-center gap-1"
                             onClick={() => onRemoveItem(item.product.id)}
                           >
-                            Xóa
+                            <Trash2 size={13} />
+                            <span>Xóa</span>
                           </Button>
                         </div>
                       </div>
@@ -93,33 +143,54 @@ function CartPage({
               </Card.Body>
             </Card>
           </Col>
+
+          {/* Cart Summary */}
           <Col lg={4}>
-            <Card className="summary-card border-0 p-3 p-md-4">
+            <Card className="summary-card border-0 p-3 p-md-4 sticky-top" style={{ top: '100px' }}>
               <Card.Body>
                 <Stack gap={3}>
-                  <h4 className="mb-0">Tóm tắt giỏ hàng</h4>
-                  <div className="d-flex justify-content-between">
-                    <span>Số dòng sản phẩm</span>
-                    <strong>{cartItems.length}</strong>
+                  <h5 className="fw-bold mb-2">Tóm tắt đơn hàng</h5>
+
+                  <div className="d-flex justify-content-between text-secondary">
+                    <span>Số món đã chọn:</span>
+                    <strong className="text-dark">{cartItems.length} mặt hàng</strong>
                   </div>
-                  <div className="d-flex justify-content-between">
-                    <span>Tổng số lượng</span>
-                    <strong>
+
+                  <div className="d-flex justify-content-between text-secondary">
+                    <span>Tổng khối lượng:</span>
+                    <strong className="text-dark">
                       {cartItems
                         .map((item) => `${formatQuantity(item.quantity)} ${item.product.unit}`)
                         .join(', ')}
                     </strong>
                   </div>
-                  <div className="d-flex justify-content-between">
-                    <span>Tổng thanh toán</span>
-                    <strong className="text-success">{formatCurrency(totalAmount)}</strong>
+
+                  <hr className="my-2" />
+
+                  <div className="d-flex justify-content-between align-items-baseline">
+                    <span className="fs-5 fw-bold text-dark">Tổng tiền tạm tính:</span>
+                    <span className="display-6 fs-3 fw-bold text-success">
+                      {formatCurrency(totalAmount)}
+                    </span>
                   </div>
-                  <Button className="primary-btn py-3" onClick={onCheckout}>
-                    Tiến hành thanh toán
+
+                  <Button className="primary-btn py-3 w-100 fs-6 fw-bold" onClick={onCheckout}>
+                    <span>Tiến hành đặt hàng</span>
+                    <ArrowRight size={18} />
                   </Button>
-                  <Button variant="outline-success" className="rounded-pill" onClick={onOpenProducts}>
-                    Thêm sản phẩm khác
+
+                  <Button
+                    variant="outline-success"
+                    className="rounded-pill py-2 w-100 fw-semibold"
+                    onClick={onOpenProducts}
+                  >
+                    Tiếp tục chọn thêm rau củ
                   </Button>
+
+                  <div className="small text-muted text-center pt-2 d-flex align-items-center justify-content-center gap-1">
+                    <ShieldCheck size={16} className="text-success" />
+                    <span>Cam kết bảo mật & kiểm định trước khi nhận hàng</span>
+                  </div>
                 </Stack>
               </Card.Body>
             </Card>

@@ -19,6 +19,7 @@ import com.app.features.payments.repository.PaymentRepository;
 import com.app.features.products.entity.Product;
 import com.app.features.products.repository.ProductRepository;
 import com.app.features.suppliers.entity.Supplier;
+import com.app.features.promotions.service.VoucherService;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -44,6 +45,7 @@ class PayOSOrderCancellationTest {
     @Mock OrderStatusHistoryService history;
     @Mock ApplicationEventPublisher events;
     @Mock PayOSPaymentProvider provider;
+    @Mock VoucherService voucherService;
 
     OrderServiceImpl service;
     UserAccount user;
@@ -54,7 +56,7 @@ class PayOSOrderCancellationTest {
 
     @BeforeEach void setup() {
         service = new OrderServiceImpl(cart, products, orders, supplierOrders, orderItems, payments,
-            current, history, events, provider);
+            current, history, events, provider, voucherService);
         user = new UserAccount(); user.setId(10L);
         order = new MarketOrder(); order.setId(100L); order.setUser(user); order.setOrderCode("CM100");
         order.setStatus("PENDING_PAYMENT"); order.setPaymentMethod("PAYOS"); order.setTotalAmount(new BigDecimal("2000"));

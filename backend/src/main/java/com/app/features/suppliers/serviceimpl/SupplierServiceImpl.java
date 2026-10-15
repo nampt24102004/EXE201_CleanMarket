@@ -121,6 +121,18 @@ public class SupplierServiceImpl implements SupplierService {
         audit.record(reviewer,"SUPPLIER_REJECTED","Supplier",id,request.reason()); return ApiResponse.ok(view(s));
     }
 
+    @Override @Transactional public ApiResponse<SupplierView> suspend(Long id, DecisionRequest request) {
+        Supplier s=find(id); if (!"APPROVED".equals(s.getStatus())) throw BusinessException.conflict("SUPPLIER_NOT_ACTIVE","Chỉ tạm dừng được nhà cung cấp đang hoạt động");
+        UserAccount reviewer=current.get(); s.setStatus("SUSPENDED"); s.setRejectionReason(request.reason().trim()); s.setReviewedBy(reviewer); s.setReviewedAt(Instant.now()); suppliers.save(s);
+        audit.record(reviewer,"SUPPLIER_SUSPENDED","Supplier",id,request.reason()); return ApiResponse.ok(view(s));
+    }
+
+    @Override @Transactional public ApiResponse<SupplierView> reactivate(Long id) {
+        Supplier s=find(id); if (!"SUSPENDED".equals(s.getStatus())) throw BusinessException.conflict("SUPPLIER_NOT_SUSPENDED","Nhà cung cấp không ở trạng thái tạm dừng");
+        UserAccount reviewer=current.get(); s.setStatus("APPROVED"); s.setRejectionReason(null); s.setReviewedBy(reviewer); s.setReviewedAt(Instant.now()); suppliers.save(s);
+        audit.record(reviewer,"SUPPLIER_REACTIVATED","Supplier",id,null); return ApiResponse.ok(view(s));
+    }
+
     @Override @Transactional public ApiResponse<SupplierView> approveDocument(Long supplierId, Long documentId) {
         Supplier supplier=find(supplierId); SupplierDocument document=findDocument(supplierId,documentId); UserAccount reviewer=current.get();
         document.setStatus(SupplierDocumentStatus.APPROVED); document.setRejectionReason(null); document.setReviewedBy(reviewer); document.setReviewedAt(Instant.now()); documents.save(document);

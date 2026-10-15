@@ -43,10 +43,10 @@ export default function PortalPage({ role, onCatalogChanged }) {
         setProfileForm({ name: profile.name, location: profile.location, description: profile.description || '' })
         setProductForm((current) => ({ ...current, categoryId: current.categoryId || String(categories[0]?.id || '') }))
       } else if (role === 'MANAGER') {
-        const [suppliers, products, orders, complaints, refunds] = await Promise.all([api.get('/api/manager/suppliers/pending'), api.get('/api/manager/products'), api.get('/api/manager/orders'), api.get('/api/manager/complaints'), api.get('/api/manager/refunds')])
+        const [suppliers, products, orders, complaints, refunds] = await Promise.all([api.get('/api/manager/suppliers/pending'), api.get('/api/manager/products'), api.get('/api/manager/orders?size=100').then((page) => page.items), api.get('/api/manager/complaints'), api.get('/api/manager/refunds')])
         setData((current) => ({ ...current, suppliers, products, orders, complaints, refunds }))
       } else {
-        const [users, roles, categories, audit] = await Promise.all([api.get('/api/admin/users'), api.get('/api/admin/roles'), api.get('/api/admin/categories'), api.get('/api/admin/audit-logs')])
+        const [users, roles, categories, audit] = await Promise.all([api.get('/api/admin/users?size=100').then((page) => page.items), api.get('/api/admin/roles'), api.get('/api/admin/categories'), api.get('/api/admin/audit-logs?size=100').then((page) => page.items)])
         setData((current) => ({ ...current, users, roles, categories, audit }))
       }
     } catch (caught) { setError(caught.message) } finally { setLoading(false) }

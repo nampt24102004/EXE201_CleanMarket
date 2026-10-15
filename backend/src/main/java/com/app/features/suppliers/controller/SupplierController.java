@@ -33,6 +33,8 @@ public class SupplierController {
     @GetMapping("/api/manager/suppliers/{id}") public ApiResponse<SupplierView> detail(@PathVariable Long id){return service.detail(id);}
     @PutMapping("/api/manager/suppliers/{id}/approve") public ApiResponse<SupplierView> approve(@PathVariable Long id){return service.approve(id);}
     @PutMapping("/api/manager/suppliers/{id}/reject") public ApiResponse<SupplierView> reject(@PathVariable Long id,@Valid @RequestBody DecisionRequest request){return service.reject(id,request);}
+    @PutMapping("/api/manager/suppliers/{id}/suspend") public ApiResponse<SupplierView> suspend(@PathVariable Long id,@Valid @RequestBody DecisionRequest request){return service.suspend(id,request);}
+    @PutMapping("/api/manager/suppliers/{id}/reactivate") public ApiResponse<SupplierView> reactivate(@PathVariable Long id){return service.reactivate(id);}
     @PutMapping("/api/manager/suppliers/{supplierId}/documents/{documentId}/approve")
     public ApiResponse<SupplierView> approveDocument(@PathVariable Long supplierId,@PathVariable Long documentId){return service.approveDocument(supplierId,documentId);}
     @PutMapping("/api/manager/suppliers/{supplierId}/documents/{documentId}/reject")

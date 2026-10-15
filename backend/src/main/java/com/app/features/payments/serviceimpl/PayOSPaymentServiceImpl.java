@@ -30,6 +30,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.payos.model.webhooks.Webhook;
+import com.app.features.promotions.service.VoucherService;
 
 @Service
 @Slf4j
@@ -43,14 +44,15 @@ public class PayOSPaymentServiceImpl implements PayOSPaymentService {
     private final PayOSPaymentProvider provider;
     private final OrderStatusHistoryService history;
     private final ApplicationEventPublisher events;
+    private final VoucherService voucherService;
 
     public PayOSPaymentServiceImpl(PaymentRepository payments, PaymentTransactionRepository transactions,
             OrderRepository orders, OrderItemRepository orderItems, NotificationRepository notifications,
             CurrentUser current, PayOSPaymentProvider provider, OrderStatusHistoryService history,
-            ApplicationEventPublisher events) {
+            ApplicationEventPublisher events,VoucherService voucherService) {
         this.payments = payments; this.transactions = transactions; this.orders = orders;
         this.orderItems = orderItems; this.notifications = notifications; this.current = current;
-        this.provider = provider; this.history = history; this.events = events;
+        this.provider = provider; this.history = history; this.events = events;this.voucherService=voucherService;
     }
 
     @Override
@@ -98,7 +100,25 @@ public class PayOSPaymentServiceImpl implements PayOSPaymentService {
         Payment latest = payments.findByOrderIdOrderByCreatedAtDesc(orderId).stream().findFirst()
             .orElseThrow(() -> BusinessException.missing("Thanh toán"));
         Payment payment = payments.lockById(latest.getId()).orElseThrow(() -> BusinessException.missing("Thanh toán"));
+        refresh(payment);
+        return new StatusResponse(order.getId(), order.getOrderCode(), payment.getProvider(), payment.getStatus(),
+            order.getStatus(), payment.getAmount(), payment.getPaidAt());
+    }
 
+    @Override
+    @Transactional
+    public StatusResponse reconcile(Long paymentId) {
+        Payment payment = payments.lockById(paymentId).orElseThrow(() -> BusinessException.missing("Thanh toán"));
+        if (!"PAYOS".equals(payment.getProvider())) throw BusinessException.bad("NOT_PAYOS_PAYMENT", "Chỉ đối soát được giao dịch payOS");
+        if (payment.getProviderOrderCode() == null) throw BusinessException.bad("PAYOS_LINK_MISSING", "Giao dịch chưa tạo liên kết payOS nên không có gì để đối soát");
+        refresh(payment);
+        MarketOrder order = payment.getOrder();
+        return new StatusResponse(order.getId(), order.getOrderCode(), payment.getProvider(), payment.getStatus(),
+            order.getStatus(), payment.getAmount(), payment.getPaidAt());
+    }
+
+    /** Pulls the provider's view of a still-open payOS payment and applies it; no-op for settled payments. */
+    private void refresh(Payment payment) {
         if (shouldReconcile(payment)) {
             try {
                 PaymentProviderDto.StatusResult remote = provider.getPaymentStatus(payment);
@@ -119,8 +139,6 @@ public class PayOSPaymentServiceImpl implements PayOSPaymentService {
                 log.warn("Could not refresh payOS status for payment {}: {}", payment.getId(), ex.getMessage());
             }
         }
-        return new StatusResponse(order.getId(), order.getOrderCode(), payment.getProvider(), payment.getStatus(),
-            order.getStatus(), payment.getAmount(), payment.getPaidAt());
     }
 
     @Override
@@ -187,6 +205,7 @@ public class PayOSPaymentServiceImpl implements PayOSPaymentService {
         payment.setProviderTransactionNo(transactionId);
         MarketOrder order = payment.getOrder();
         order.setStatus("CONFIRMED");
+        voucherService.redeem(order.getId());
         history.record(order, "CONFIRMED", null, historyNote);
 
         Notification notification = new Notification();

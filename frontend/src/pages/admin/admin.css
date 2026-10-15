@@ -1,0 +1,358 @@
+/* ==========================================================================
+   CleanMarket Enterprise Admin Dashboard Styles
+   ========================================================================== */
+
+.admin-shell {
+  min-height: 100vh;
+  display: flex;
+  background-color: #f8fafc;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  color: #1e293b;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   Sidebar Styling
+   ========================================================================== */
+.admin-sidebar {
+  width: 275px;
+  background: linear-gradient(180deg, #092e1a 0%, #064e3b 100%);
+  color: #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1030;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), width 0.3s ease;
+  box-shadow: 4px 0 24px rgba(6, 78, 59, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-sidebar-header {
+  padding: 1.25rem 1.25rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 0.85rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.admin-nav-group-title {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #86efac;
+  font-weight: 700;
+  padding: 0.75rem 0.75rem 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.admin-nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.62rem 0.85rem;
+  border-radius: 10px;
+  color: #e2e8f0;
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  margin-bottom: 0.2rem;
+}
+
+.admin-nav-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  transform: translateX(3px);
+}
+
+.admin-nav-link.active {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.35);
+}
+
+.admin-nav-item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.admin-nav-icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.9;
+  flex-shrink: 0;
+}
+
+.admin-nav-link.active .admin-nav-icon {
+  opacity: 1;
+}
+
+.admin-nav-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
+.admin-sidebar-footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.admin-user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.admin-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ==========================================================================
+   Main Content & Topbar
+   ========================================================================== */
+.admin-main-wrap {
+  flex: 1;
+  margin-left: 275px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100vh;
+  transition: margin-left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-topbar {
+  height: 68px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+}
+
+.admin-content-body {
+  flex: 1;
+  padding: 1.75rem;
+}
+
+/* ==========================================================================
+   Cards & KPI Badges
+   ========================================================================== */
+.admin-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.4rem;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04), 0 1px 4px -1px rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin-bottom: 1.25rem;
+}
+
+.admin-card:hover {
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.07);
+}
+
+.admin-kpi-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.35rem 1.4rem;
+  transition: all 0.25s ease;
+}
+
+.admin-kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.08);
+}
+
+.admin-kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.admin-kpi-card.kpi-success::before { background: linear-gradient(90deg, #16a34a, #4ade80); }
+.admin-kpi-card.kpi-primary::before { background: linear-gradient(90deg, #2563eb, #60a5fa); }
+.admin-kpi-card.kpi-warning::before { background: linear-gradient(90deg, #d97706, #fbbf24); }
+.admin-kpi-card.kpi-danger::before { background: linear-gradient(90deg, #dc2626, #f87171); }
+.admin-kpi-card.kpi-purple::before { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+
+.admin-kpi-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.kpi-success .admin-kpi-icon-box { background: #dcfce7; color: #15803d; }
+.kpi-primary .admin-kpi-icon-box { background: #dbeafe; color: #1d4ed8; }
+.kpi-warning .admin-kpi-icon-box { background: #fef3c7; color: #b45309; }
+.kpi-danger .admin-kpi-icon-box { background: #fee2e2; color: #b91c1c; }
+.kpi-purple .admin-kpi-icon-box { background: #f3e8ff; color: #6d28d9; }
+
+.admin-kpi-value {
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.admin-kpi-label {
+  font-size: 0.82rem;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ==========================================================================
+   Alert Banners & Action Cards
+   ========================================================================== */
+.admin-action-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 0.65rem;
+  transition: all 0.2s ease;
+}
+
+.admin-action-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+/* ==========================================================================
+   Tables & Badges
+   ========================================================================== */
+.admin-table {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.admin-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-table td {
+  padding: 0.95rem 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.88rem;
+}
+
+.admin-table tr:hover td {
+  background-color: #f8fafc;
+}
+
+/* Chart Bars */
+.admin-bar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 24px;
+}
+
+.admin-bar-fill {
+  width: 100%;
+  max-width: 32px;
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+  border-radius: 6px 6px 0 0;
+  transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s ease;
+  position: relative;
+}
+
+.admin-bar-fill:hover {
+  background: linear-gradient(180deg, #4ade80 0%, #15803d 100%);
+  transform: scaleY(1.03);
+}
+
+/* ==========================================================================
+   Responsive Adaptations
+   ========================================================================== */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1025;
+}
+
+@media (max-width: 991px) {
+  .admin-sidebar {
+    transform: translateX(-100%);
+  }
+  .admin-sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+  .sidebar-overlay.show {
+    display: block;
+  }
+  .admin-main-wrap {
+    margin-left: 0;
+  }
+  .admin-content-body {
+    padding: 1rem;
+  }
+  .admin-topbar {
+    padding: 0 1rem;
+  }
+}

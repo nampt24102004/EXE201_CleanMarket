@@ -6,7 +6,7 @@ import java.util.*;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
-public interface PaymentRepository extends JpaRepository<Payment, Long> {
+public interface PaymentRepository extends JpaRepository<Payment, Long>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<Payment> {
     List<Payment> findByOrderIdOrderByCreatedAtDesc(Long orderId);
     boolean existsByOrderIdAndStatus(Long orderId, String status);
     Optional<Payment> findByTxnRef(String txnRef);

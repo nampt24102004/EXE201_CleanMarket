@@ -6,11 +6,12 @@ import com.app.common.ApiResponse;import com.app.features.promotions.dto.Voucher
  @PostMapping("/api/partner/vouchers") @PreAuthorize("hasRole('PARTNER')") public ApiResponse<VoucherView> createPartner(@RequestBody VoucherRequest r){return ApiResponse.ok(service.createPartner(r));}
  @PutMapping("/api/partner/vouchers/{id}") @PreAuthorize("hasRole('PARTNER')") public ApiResponse<VoucherView> updatePartner(@PathVariable Long id,@RequestBody VoucherRequest r){return ApiResponse.ok(service.updatePartner(id,r));}
  @PutMapping("/api/partner/vouchers/{id}/status") @PreAuthorize("hasRole('PARTNER')") public ApiResponse<VoucherView> statusPartner(@PathVariable Long id,@RequestBody StatusRequest r){return ApiResponse.ok(service.statusPartner(id,r.status()));}
- @DeleteMapping("/api/partner/vouchers/{id}") @PreAuthorize("hasRole('PARTNER')") public ApiResponse<VoucherView> deletePartner(@PathVariable Long id){return ApiResponse.ok(service.statusPartner(id,"INACTIVE"));}
+ @DeleteMapping("/api/partner/vouchers/{id}") @PreAuthorize("hasRole('PARTNER')") public ApiResponse<Void> deletePartner(@PathVariable Long id){service.deletePartner(id);return ApiResponse.ok(null,"Đã xóa voucher đối tác thành công");}
  @GetMapping("/api/manager/vouchers") @PreAuthorize("hasAnyRole('MANAGER','ADMIN')") public ApiResponse<List<VoucherView>> platform(){return ApiResponse.ok(service.platform());}
  @PostMapping("/api/manager/vouchers") @PreAuthorize("hasAnyRole('MANAGER','ADMIN')") public ApiResponse<VoucherView> createPlatform(@RequestBody VoucherRequest r){return ApiResponse.ok(service.createPlatform(r));}
  @PutMapping("/api/manager/vouchers/{id}") @PreAuthorize("hasAnyRole('MANAGER','ADMIN')") public ApiResponse<VoucherView> updatePlatform(@PathVariable Long id,@RequestBody VoucherRequest r){return ApiResponse.ok(service.updatePlatform(id,r));}
  @PutMapping("/api/manager/vouchers/{id}/status") @PreAuthorize("hasAnyRole('MANAGER','ADMIN')") public ApiResponse<VoucherView> statusPlatform(@PathVariable Long id,@RequestBody StatusRequest r){return ApiResponse.ok(service.statusPlatform(id,r.status()));}
- @DeleteMapping("/api/manager/vouchers/{id}") @PreAuthorize("hasAnyRole('MANAGER','ADMIN')") public ApiResponse<VoucherView> deletePlatform(@PathVariable Long id){return ApiResponse.ok(service.statusPlatform(id,"INACTIVE"));}
+ @DeleteMapping("/api/manager/vouchers/{id}") @PreAuthorize("hasAnyRole('MANAGER','ADMIN')") public ApiResponse<Void> deletePlatform(@PathVariable Long id){service.deletePlatform(id);return ApiResponse.ok(null,"Đã xóa voucher sàn thành công");}
+ @DeleteMapping("/api/admin/vouchers/{id}") @PreAuthorize("hasRole('ADMIN')") public ApiResponse<Void> deleteAdmin(@PathVariable Long id){service.deletePlatform(id);return ApiResponse.ok(null,"Đã xóa voucher sàn thành công");}
  public record StatusRequest(String status){}
 }
