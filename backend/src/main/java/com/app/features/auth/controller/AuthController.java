@@ -27,6 +27,8 @@ public class AuthController {
     }
     @PostMapping("/login")
     public ApiResponse<AuthResult> login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest, HttpServletResponse response) { return signIn(service.login(request), servletRequest, response); }
+    @PostMapping("/google")
+    public ApiResponse<AuthResult> google(@Valid @RequestBody GoogleAuthRequest request, HttpServletRequest servletRequest, HttpServletResponse response) { return signIn(service.loginWithGoogle(request), servletRequest, response); }
     @PostMapping("/email/verify")
     public ApiResponse<AuthResult> verify(@Valid @RequestBody VerifyEmailRequest request, HttpServletRequest servletRequest, HttpServletResponse response) { return signIn(service.verifyEmail(request), servletRequest, response); }
     @PostMapping("/email/resend") public ApiResponse<Void> resend(@Valid @RequestBody EmailRequest request) { return service.resendVerificationOtp(request); }
