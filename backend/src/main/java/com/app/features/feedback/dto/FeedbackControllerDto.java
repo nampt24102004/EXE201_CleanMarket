@@ -9,8 +9,8 @@ public final class FeedbackControllerDto {
     private FeedbackControllerDto() { }
     public record ReviewRequest(@NotNull Long orderItemId, @Min(1) @Max(5) int rating, @NotBlank String comment) { }
     public record ReviewView(Long id, Long orderItemId, Long productId, int rating, String comment, String author) { }
-    public record ComplaintRequest(@NotNull Long orderId, @NotBlank String reason, @NotBlank String description) { }
-    public record ComplaintView(Long id, String orderCode, String reason, String description, String status, String resolution) { }
+    public record ComplaintRequest(@NotNull Long orderId, @NotBlank String reason, @NotBlank String description, Long supplierOrderId) { }
+    public record ComplaintView(Long id, String orderCode, String reason, String description, String status, String resolution, Long supplierOrderId, String supplierName, java.time.Instant createdAt) { }
     public record ResolutionRequest(@NotBlank String resolution) { }
     public record RefundRequest(@NotNull @DecimalMin("0.01") BigDecimal amount, String note) { }
     public record RefundView(Long id, Long complaintId, BigDecimal amount, String status) { }

@@ -70,6 +70,7 @@ export default function AdminTopbar({
           <RefreshCw size={14} className={refreshing ? 'spin' : ''} />
           <span className="d-none d-sm-inline">Làm mới</span>
         </Button>
+        <Link to="/profile" className="btn btn-sm btn-light border" title="Hồ sơ và mật khẩu">Tài khoản</Link>
 
         {totalPending > 0 && (
           <Link

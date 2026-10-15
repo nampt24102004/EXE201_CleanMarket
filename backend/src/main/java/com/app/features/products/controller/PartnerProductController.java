@@ -26,5 +26,6 @@ public class PartnerProductController {
         return service.uploadCertificate(id,certificateType,certificateNumber,issuer,issuedDate,expiryDate,file);
     }
     @DeleteMapping("/{id}/certificates/{certificateId}") public ApiResponse<ProductView> deleteCertificate(@PathVariable Long id,@PathVariable Long certificateId){return service.deleteCertificate(id,certificateId);}
+    @PutMapping("/{id}/availability") public ApiResponse<ProductView> availability(@PathVariable Long id,@RequestBody java.util.Map<String,Boolean> body){return service.availability(id,Boolean.TRUE.equals(body.get("active")));}
     @PostMapping("/{id}/submit") public ApiResponse<ProductView> submit(@PathVariable Long id){return service.submit(id);}
 }

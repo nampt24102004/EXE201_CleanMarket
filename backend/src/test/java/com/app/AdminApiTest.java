@@ -133,6 +133,51 @@ class AdminApiTest {
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.total").value(1));
     }
 
+    @Test void orderStatusFollowsSupplierProgressAndShippedOrdersCannotBeCancelled() throws Exception {
+        Product carrot = seedProduct();
+        account("buyer2-" + tag, "USER");
+        MockHttpSession buyer = login("buyer2-" + tag);
+        mvc.perform(post("/api/cart/items").with(csrf()).session(buyer).contentType(MediaType.APPLICATION_JSON).content("{\"productId\":" + carrot.getId() + ",\"quantity\":1}")).andExpect(status().isOk());
+        JsonNode order = body(mvc.perform(post("/api/orders/checkout").with(csrf()).session(buyer).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"fullName\":\"Buyer\",\"phone\":\"0912345678\",\"address\":\"Hanoi\",\"paymentMethod\":\"COD\"}")).andExpect(status().isOk()));
+        long orderId = order.path("data").path("id").asLong();
+        long partId = order.path("data").path("supplierOrders").get(0).path("id").asLong();
+
+        MockHttpSession farm = login("farm-" + tag);
+        put(farm, "/api/partner/orders/" + partId + "/status", "{\"status\":\"CONFIRMED\"}").andExpect(status().isOk());
+        mvc.perform(get("/api/manager/orders/" + orderId).session(admin)).andExpect(jsonPath("$.data.order.status").value("CONFIRMED"));
+        put(farm, "/api/partner/orders/" + partId + "/status", "{\"status\":\"SHIPPED\"}").andExpect(status().isOk());
+        mvc.perform(get("/api/manager/orders/" + orderId).session(admin)).andExpect(jsonPath("$.data.order.status").value("SHIPPED"))
+            .andExpect(jsonPath("$.data.history[-1].status").value("SHIPPED"));
+        put(admin, "/api/manager/orders/" + orderId + "/cancel", "{\"reason\":\"thử\"}").andExpect(status().isConflict());
+        put(farm, "/api/partner/orders/" + partId + "/status", "{\"status\":\"DELIVERED\"}").andExpect(status().isOk());
+        mvc.perform(get("/api/manager/orders/" + orderId).session(admin)).andExpect(jsonPath("$.data.order.status").value("DELIVERED"))
+            .andExpect(jsonPath("$.data.payments[0].status").value("PAID"));
+    }
+
+    @Test void partnerSeesPaidOrdersWithDeliveryInfoAndIsNotified() throws Exception {
+        Product carrot = seedProduct();
+        account("buyer3-" + tag, "USER");
+        MockHttpSession buyer = login("buyer3-" + tag);
+        String checkout = "{\"fullName\":\"Chị Lan\",\"phone\":\"0912345678\",\"address\":\"Hanoi\",\"note\":\"Gọi trước\",\"paymentMethod\":\"%s\"}";
+        mvc.perform(post("/api/cart/items").with(csrf()).session(buyer).contentType(MediaType.APPLICATION_JSON).content("{\"productId\":" + carrot.getId() + ",\"quantity\":1}")).andExpect(status().isOk());
+        mvc.perform(post("/api/orders/checkout").with(csrf()).session(buyer).contentType(MediaType.APPLICATION_JSON).content(checkout.formatted("COD"))).andExpect(status().isOk());
+        mvc.perform(post("/api/cart/items").with(csrf()).session(buyer).contentType(MediaType.APPLICATION_JSON).content("{\"productId\":" + carrot.getId() + ",\"quantity\":1}")).andExpect(status().isOk());
+        mvc.perform(post("/api/orders/checkout").with(csrf()).session(buyer).contentType(MediaType.APPLICATION_JSON).content(checkout.formatted("PAYOS"))).andExpect(status().isOk());
+
+        MockHttpSession farm = login("farm-" + tag);
+        // The unpaid payOS order stays hidden until asked for; the COD one carries what the farm needs to deliver.
+        mvc.perform(get("/api/partner/orders").session(farm)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].paymentMethod").value("COD"))
+            .andExpect(jsonPath("$.data[0].paymentStatus").value("PENDING"))
+            .andExpect(jsonPath("$.data[0].recipientName").value("Chị Lan"))
+            .andExpect(jsonPath("$.data[0].note").value("Gọi trước"));
+        mvc.perform(get("/api/partner/orders").param("includeUnpaid", "true").session(farm)).andExpect(jsonPath("$.data.length()").value(2));
+        mvc.perform(get("/api/notifications").session(farm)).andExpect(jsonPath("$.data.unread").value(1))
+            .andExpect(jsonPath("$.data.items[0].title").value(org.hamcrest.Matchers.startsWith("Đơn hàng mới")));
+    }
+
     @Test void dashboardAndReportsRespond() throws Exception {
         mvc.perform(get("/api/admin/dashboard/summary").session(admin)).andExpect(status().isOk())
             .andExpect(jsonPath("$.data.totalUsers").isNumber()).andExpect(jsonPath("$.data.ordersByStatus").isMap());

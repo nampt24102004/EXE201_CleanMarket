@@ -37,8 +37,8 @@ import com.app.features.promotions.dto.VoucherDto.SupplierDiscount;
 
 @Service
 public class OrderServiceImpl implements OrderService {
-    private final CartItemRepository cart; private final ProductRepository products; private final OrderRepository orders; private final SupplierOrderRepository supplierOrders; private final OrderItemRepository orderItems; private final PaymentRepository payments; private final CurrentUser current; private final OrderStatusHistoryService history; private final ApplicationEventPublisher events; private final PayOSPaymentProvider payOSProvider; private final VoucherService voucherService;
-    public OrderServiceImpl(CartItemRepository cart, ProductRepository products, OrderRepository orders, SupplierOrderRepository supplierOrders, OrderItemRepository orderItems, PaymentRepository payments, CurrentUser current, OrderStatusHistoryService history, ApplicationEventPublisher events, PayOSPaymentProvider payOSProvider, VoucherService voucherService) { this.cart = cart; this.products = products; this.orders = orders; this.supplierOrders = supplierOrders; this.orderItems = orderItems; this.payments = payments; this.current = current; this.history = history; this.events = events; this.payOSProvider = payOSProvider; this.voucherService=voucherService; }
+    private final CartItemRepository cart; private final ProductRepository products; private final OrderRepository orders; private final SupplierOrderRepository supplierOrders; private final OrderItemRepository orderItems; private final PaymentRepository payments; private final CurrentUser current; private final OrderStatusHistoryService history; private final ApplicationEventPublisher events; private final PayOSPaymentProvider payOSProvider; private final VoucherService voucherService; private final com.app.features.orders.service.PartnerOrderNotifier partnerNotifier; private final com.app.features.orders.service.BuyerOrderNotifier buyerNotifier;
+    public OrderServiceImpl(CartItemRepository cart, ProductRepository products, OrderRepository orders, SupplierOrderRepository supplierOrders, OrderItemRepository orderItems, PaymentRepository payments, CurrentUser current, OrderStatusHistoryService history, ApplicationEventPublisher events, PayOSPaymentProvider payOSProvider, VoucherService voucherService, com.app.features.orders.service.PartnerOrderNotifier partnerNotifier, com.app.features.orders.service.BuyerOrderNotifier buyerNotifier) { this.cart = cart; this.products = products; this.orders = orders; this.supplierOrders = supplierOrders; this.orderItems = orderItems; this.payments = payments; this.current = current; this.history = history; this.events = events; this.payOSProvider = payOSProvider; this.voucherService=voucherService; this.partnerNotifier=partnerNotifier; this.buyerNotifier=buyerNotifier; }
     @Transactional public OrderView checkout(CheckoutRequest request) {
         if (request.fullName() == null || request.fullName().isBlank() || request.phone() == null || !request.phone().matches("0[0-9]{9}") || request.address() == null || request.address().isBlank()) throw BusinessException.bad("INVALID_SHIPPING", "Thông tin giao hàng không hợp lệ");
         String method = request.paymentMethod() == null ? "" : request.paymentMethod().toUpperCase(); if (Arrays.stream(PaymentMethod.values()).noneMatch(value -> value.name().equals(method))) throw BusinessException.bad("INVALID_PAYMENT_METHOD", "Phương thức thanh toán không hợp lệ");
@@ -50,7 +50,7 @@ public class OrderServiceImpl implements OrderService {
         Map<Long, BigDecimal> supplierTotals = new LinkedHashMap<>();
         for (CartItem item : items) {
             Product p = locked.get(item.getProduct().getId());
-            if (!"APPROVED".equals(p.getSupplier().getStatus()) || !"APPROVED".equals(p.getApprovalStatus()) || !"ACTIVE".equals(p.getStatus())) throw BusinessException.bad("PRODUCT_UNAVAILABLE", p.getName() + " không còn được bán");
+            if (!"APPROVED".equals(p.getSupplier().getStatus()) || !"APPROVED".equals(p.getApprovalStatus()) || !"ACTIVE".equals(p.getStatus()) || !p.getCategory().isActive()) throw BusinessException.bad("PRODUCT_UNAVAILABLE", p.getName() + " không còn được bán");
             if (item.getQuantity().signum() <= 0 || p.getStock().compareTo(item.getQuantity()) < 0) throw BusinessException.bad("PRODUCT_OUT_OF_STOCK", p.getName() + " không đủ tồn kho");
             BigDecimal line = p.getPrice().multiply(item.getQuantity()); total = total.add(line); supplierTotals.merge(p.getSupplier().getId(), line, BigDecimal::add);
         }
@@ -68,6 +68,7 @@ public class OrderServiceImpl implements OrderService {
             return new OrderItemMail(product.getName(), item.getQuantity(), product.getUnit(), product.getPrice(), product.getPrice().multiply(item.getQuantity()));
         }).toList();
         events.publishEvent(new OrderPlacedMailEvent(user.getEmail(), order.getFullName(), order.getOrderCode(), method, order.getTotalAmount(), order.getAddress(), mailItems));
+        if ("COD".equals(method)) partnerNotifier.orderReady(order);
         cart.deleteByUserId(user.getId());
         return view(order);
     }
@@ -80,17 +81,36 @@ public class OrderServiceImpl implements OrderService {
         if (!List.of("CREATED", "PENDING_PAYMENT").contains(order.getStatus())) throw BusinessException.conflict("ORDER_NOT_CANCELLABLE", "Đơn hàng không thể hủy");
         List<SupplierOrder> parts = supplierOrders.findByOrderId(id);
         if (parts.stream().anyMatch(part -> !"CREATED".equals(part.getStatus()))) throw BusinessException.conflict("ORDER_IN_PROGRESS", "Nhà cung cấp đã bắt đầu xử lý đơn");
-        return cancelLocked(order, parts, "Khách hàng hủy đơn CleanMarket", null);
+        return cancelLocked(order, parts, "Khách hàng hủy đơn CleanMarket", null, current.get());
     }
     /** Staff cancellation: allowed until any supplier ships, and never for paid orders (those go through complaint and refund). */
     @Transactional public OrderView cancelByStaff(Long id, String reason) {
         MarketOrder order = orders.lockById(id).orElseThrow(() -> BusinessException.missing("Đơn hàng"));
-        if (List.of("DELIVERED", "CANCELLED").contains(order.getStatus())) throw BusinessException.conflict("ORDER_NOT_CANCELLABLE", "Đơn hàng đã hoàn tất hoặc đã hủy");
+        if (List.of("SHIPPED", "DELIVERED", "CANCELLED").contains(order.getStatus())) throw BusinessException.conflict("ORDER_NOT_CANCELLABLE", "Đơn hàng đã hoàn tất hoặc đã hủy");
         List<SupplierOrder> parts = supplierOrders.findByOrderId(id);
         if (parts.stream().anyMatch(part -> List.of("SHIPPED", "DELIVERED").contains(part.getStatus()))) throw BusinessException.conflict("ORDER_SHIPPED", "Đơn hàng đã được giao đi nên không thể hủy");
-        return cancelLocked(order, parts, "CleanMarket hủy đơn", reason);
+        OrderView cancelled = cancelLocked(order, parts, "CleanMarket hủy đơn", reason, current.get());
+        buyerNotifier.orderCancelled(order, "CleanMarket đã hủy đơn hàng của bạn. Lý do: " + reason + ". Hàng và voucher (nếu có) đã được hoàn lại.");
+        return cancelled;
     }
-    private OrderView cancelLocked(MarketOrder order, List<SupplierOrder> parts, String providerReason, String note) {
+    /**
+     * Releases a payOS order the customer never paid once its payment window is over: link expiry if a link was issued,
+     * otherwise order time + link TTL. Runs in its own transaction so a sweep never rolls back the request that triggered it.
+     */
+    @Transactional(Transactional.TxType.REQUIRES_NEW) public boolean expireUnpaid(Long id) {
+        MarketOrder order = orders.lockById(id).orElse(null);
+        if (order == null || !"PENDING_PAYMENT".equals(order.getStatus()) || !"PAYOS".equals(order.getPaymentMethod())) return false;
+        Payment latest = payments.findByOrderIdOrderByCreatedAtDesc(id).stream().findFirst().orElse(null);
+        if (latest == null || !"PENDING".equals(latest.getStatus())) return false;
+        java.time.Instant deadline = latest.getExpiresAt() != null ? latest.getExpiresAt() : order.getCreatedAt().plusSeconds(linkTtlSeconds);
+        if (java.time.Instant.now().isBefore(deadline.plusSeconds(EXPIRY_GRACE_SECONDS))) return false;
+        cancelLocked(order, supplierOrders.findByOrderId(id), "Hết hạn thanh toán", "Tự hủy vì quá hạn thanh toán payOS", null);
+        buyerNotifier.orderCancelled(order, "Đơn hàng đã quá hạn thanh toán nên được hủy tự động, hàng đã được hoàn lại kho.");
+        return true;
+    }
+    private static final long EXPIRY_GRACE_SECONDS = 120;
+    @org.springframework.beans.factory.annotation.Value("${app.payos.link-ttl-seconds:900}") private long linkTtlSeconds;
+    private OrderView cancelLocked(MarketOrder order, List<SupplierOrder> parts, String providerReason, String note, UserAccount actor) {
         List<Payment> attempts = payments.findByOrderIdOrderByCreatedAtDesc(order.getId());
         if (attempts.stream().anyMatch(p -> "PAID".equals(p.getStatus())))
             throw BusinessException.conflict("PAYMENT_ALREADY_PAID", "Đơn hàng đã thanh toán nên không thể hủy");
@@ -122,7 +142,7 @@ public class OrderServiceImpl implements OrderService {
         }
         parts.forEach(part -> part.setStatus("CANCELLED"));
         attempts.stream().filter(p -> "PENDING".equals(p.getStatus())).forEach(p -> p.setStatus("CANCELLED"));
-        voucherService.release(order.getId());order.setStatus("CANCELLED"); history.record(order, "CANCELLED", current.get(), note);
+        voucherService.release(order.getId());order.setStatus("CANCELLED"); history.record(order, "CANCELLED", actor, note);
         return view(order);
     }
     public OrderView view(MarketOrder order) {

@@ -1047,7 +1047,7 @@ export default function AdminOrdersView() {
         <Modal.Footer className="d-flex justify-content-between">
           <div>
             {selectedOrderDetail?.order?.status &&
-              ['CREATED', 'CONFIRMED'].includes(selectedOrderDetail.order.status) && (
+              ['CREATED', 'PENDING_PAYMENT', 'CONFIRMED'].includes(selectedOrderDetail.order.status) && (
                 <Button
                   variant="outline-danger"
                   size="sm"

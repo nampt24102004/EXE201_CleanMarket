@@ -13,7 +13,7 @@ public class PartnerOrderController {
     private final PartnerOrderService service;
     public PartnerOrderController(PartnerOrderService service) { this.service = service; }
     @GetMapping @Transactional(readOnly = true)
-    public ApiResponse<List<PartView>> mine() { return service.mine(); }
+    public ApiResponse<List<PartView>> mine(@RequestParam(defaultValue = "false") boolean includeUnpaid) { return service.mine(includeUnpaid); }
     @PutMapping("/{id}/status") @Transactional
     public ApiResponse<PartView> update(@PathVariable Long id, @RequestBody StatusRequest request) { return service.update(id, request); }
 }

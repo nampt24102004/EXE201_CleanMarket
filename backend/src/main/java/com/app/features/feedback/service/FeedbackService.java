@@ -18,6 +18,7 @@ public interface FeedbackService {
     public ApiResponse<ComplaintView> complaint(@Valid ComplaintRequest request);
     public ApiResponse<List<ComplaintView>> myComplaints();
     public ApiResponse<List<ComplaintView>> pending();
+    public ApiResponse<List<ComplaintView>> partnerComplaints();
     public ApiResponse<ComplaintView> resolve(Long id, @Valid ResolutionRequest request);
     public ApiResponse<RefundView> refund(Long id, @Valid RefundRequest request);
 }

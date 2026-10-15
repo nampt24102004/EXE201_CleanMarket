@@ -15,4 +15,5 @@ public interface PartnerProductService {
     ApiResponse<CertificateView> uploadCertificate(Long id,String type,String number,String issuer,LocalDate issuedDate,LocalDate expiryDate,MultipartFile file);
     ApiResponse<ProductView> deleteCertificate(Long id,Long certificateId);
     ApiResponse<ProductView> submit(Long id);
+    ApiResponse<ProductView> availability(Long id,boolean active);
 }

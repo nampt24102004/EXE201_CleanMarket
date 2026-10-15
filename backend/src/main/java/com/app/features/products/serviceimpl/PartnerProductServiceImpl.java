@@ -43,8 +43,11 @@ public class PartnerProductServiceImpl implements PartnerProductService {
         audit.record(current.get(),"PRODUCT_CREATED","Product",p.getId(),null);return ApiResponse.ok(view(p));
     }
     @Override @Transactional public ApiResponse<ProductView> update(Long id,ProductRequest request){
-        Product p=ownedProduct(id);if("APPROVED".equals(p.getApprovalStatus()))throw BusinessException.conflict("INVALID_PRODUCT_STATUS","Sản phẩm đã duyệt không thể sửa");
-        fill(p,request);p.setApprovalStatus("DRAFT");p.setRejectionReason(null);p.setReviewedAt(null);p.setReviewedBy(null);products.save(p);
+        Product p=ownedProduct(id);if("PENDING".equals(p.getApprovalStatus()))throw BusinessException.conflict("INVALID_PRODUCT_STATUS","Sản phẩm đang chờ duyệt, vui lòng đợi kết quả trước khi sửa");
+        // Editing an approved product takes it off sale until the changes are reviewed again (same path as a new product).
+        boolean wasApproved="APPROVED".equals(p.getApprovalStatus());
+        fill(p,request);p.setApprovalStatus("DRAFT");p.setStatus("INACTIVE");p.setRejectionReason(null);p.setReviewedAt(null);p.setReviewedBy(null);products.save(p);
+        if(wasApproved)audit.record(current.get(),"PRODUCT_EDITED_AFTER_APPROVAL","Product",id,null);
         return ApiResponse.ok(view(p));
     }
     @Override @Transactional public ApiResponse<List<ImageView>> uploadImages(Long id,List<MultipartFile> files){
@@ -70,6 +73,12 @@ public class PartnerProductServiceImpl implements PartnerProductService {
         boolean withdrawable=c.getStatus()==CertificationStatus.REJECTED||c.expiredOn(LocalDate.now(com.app.common.DateRange.ZONE))||Set.of("DRAFT","REJECTED").contains(p.getApprovalStatus());
         if(!withdrawable)throw BusinessException.conflict("CERTIFICATE_LOCKED","Chỉ xóa được chứng nhận bị từ chối/hết hạn, hoặc khi sản phẩm đang ở bản nháp");
         certifications.delete(c);storage.delete(c.getObjectKey());audit.record(current.get(),"CERTIFICATE_DELETED","Certification",certificateId,c.getType());return ApiResponse.ok(view(p));
+    }
+    /** Partner switches an approved product on or off sale without a new review (e.g. out of season). */
+    @Override @Transactional public ApiResponse<ProductView> availability(Long id,boolean active){
+        approvedSupplier();Product p=ownedProduct(id);
+        if(!"APPROVED".equals(p.getApprovalStatus()))throw BusinessException.conflict("INVALID_PRODUCT_STATUS","Chỉ bật/tắt bán được sản phẩm đã duyệt");
+        p.setStatus(active?"ACTIVE":"INACTIVE");products.save(p);audit.record(current.get(),active?"PRODUCT_RESUMED":"PRODUCT_PAUSED","Product",id,null);return ApiResponse.ok(view(p));
     }
     @Override @Transactional public ApiResponse<ProductView> submit(Long id){
         Product p=editable(id);if(!Set.of("DRAFT","REJECTED").contains(p.getApprovalStatus()))throw BusinessException.conflict("INVALID_PRODUCT_STATUS","Sản phẩm không thể gửi duyệt");

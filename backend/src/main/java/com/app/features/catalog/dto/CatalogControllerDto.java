@@ -11,5 +11,5 @@ public final class CatalogControllerDto {
     public record BatchView(Long id,String batchCode,String traceCode,String farmName,String origin,LocalDate harvestDate,LocalDate packagingDate,LocalDate expiryDate,String certificateNo,String status){}
     public record PublicCertificateView(String type,String certificateNo,String issuer,LocalDate expiryDate){}
     public record ProductView(Long id,String name,String description,BigDecimal price,String unit,String image,BigDecimal stock,
-        CategoryView category,SupplierView supplier,String certificateNo,BatchView batch,String origin,List<PublicCertificateView> certifications){}
+        CategoryView category,SupplierView supplier,String certificateNo,BatchView batch,String origin,List<PublicCertificateView> certifications,Double averageRating,long reviewCount){}
 }

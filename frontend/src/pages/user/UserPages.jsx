@@ -3,6 +3,11 @@ import { Alert, Badge, Button, Card, Col, Container, Form, Row, Spinner, Table }
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import formatCurrency from '../../utils/formatCurrency'
 import { api } from '../../services/apiClient'
+import AddressBook from '../../components/account/AddressBook'
+import ChangePasswordCard from '../../components/account/ChangePasswordCard'
+import RefundBankCard from '../../components/refunds/RefundBankCard'
+
+const roleLabel = { USER: 'Khách hàng mua sắm nông sản sạch', PARTNER: 'Đối tác nhà vườn', MANAGER: 'Quản lý vận hành', ADMIN: 'Quản trị viên' }
 import {
   Package,
   ArrowLeft,
@@ -403,6 +408,7 @@ export function OrderDetailPage({ orders = [], onOrdersChanged }) {
   const [reviewItemId, setReviewItemId] = useState('')
   const [reason, setReason] = useState('Chất lượng sản phẩm')
   const [description, setDescription] = useState('')
+  const [complaintPartId, setComplaintPartId] = useState('')
   const [reviews, setReviews] = useState([])
   const [complaints, setComplaints] = useState([])
   const [notice, setNotice] = useState('')
@@ -499,6 +505,7 @@ export function OrderDetailPage({ orders = [], onOrdersChanged }) {
         orderId: order.id,
         reason,
         description,
+        supplierOrderId: complaintPartId ? Number(complaintPartId) : null,
       })
       setComplaints((current) => [created, ...current])
       setDescription('')
@@ -859,6 +866,17 @@ export function OrderDetailPage({ orders = [], onOrdersChanged }) {
               Nếu nông sản bị dập nát, giao sai món hoặc không hài lòng về độ tươi, CleanMarket cam kết đổi trả hoặc hoàn tiền nhanh chóng.
             </p>
             <Form onSubmit={submitComplaint}>
+              {order.supplierOrders?.length > 1 && (
+                <Form.Group className="mb-2">
+                  <Form.Label className="small fw-semibold">Nhà cung cấp liên quan</Form.Label>
+                  <Form.Select className="rounded-3" value={complaintPartId} onChange={(e) => setComplaintPartId(e.target.value)}>
+                    <option value="">Cả đơn hàng</option>
+                    {order.supplierOrders.map((part) => (
+                      <option key={part.id} value={part.id}>{part.supplierName}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              )}
               <Form.Group className="mb-2">
                 <Form.Label className="small fw-semibold">Vấn đề gặp phải</Form.Label>
                 <Form.Select
@@ -905,15 +923,18 @@ export function OrderDetailPage({ orders = [], onOrdersChanged }) {
                     <div className="d-flex justify-content-between align-items-center mb-1">
                       <span className="fw-bold text-dark">{item.reason}</span>
                       <Badge bg={item.status === 'RESOLVED' ? 'success' : 'warning'} pill>
-                        {item.status}
+                        {item.status === 'RESOLVED' ? 'Đã xử lý' : 'Đang xử lý'}
                       </Badge>
                     </div>
+                    {item.supplierName && <div className="text-secondary">Nhà cung cấp: {item.supplierName}</div>}
                     <div className="text-muted">{item.description}</div>
+                    {item.resolution && <div className="text-success mt-1">Phương án: {item.resolution}</div>}
                   </div>
                 ))}
               </div>
             )}
           </Card>
+          <RefundBankCard orderCode={order.orderCode} />
         </Col>
       </Row>
     </Container>
@@ -927,7 +948,6 @@ export function ProfilePage() {
   const [profile, setProfile] = useState(null)
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
-  const [defaultAddress, setDefaultAddress] = useState('')
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -938,7 +958,6 @@ export function ProfilePage() {
         setProfile(data)
         setFullName(data.fullName || '')
         setPhone(data.phone || '')
-        setDefaultAddress(data.address || '')
       })
       .catch((caught) => setError(caught.message))
   }, [])
@@ -952,7 +971,6 @@ export function ProfilePage() {
       const data = await api.put('/api/users/me', {
         fullName,
         phone,
-        address: defaultAddress,
       })
       setProfile(data)
       setNotice('Đã cập nhật hồ sơ cá nhân thành công.')
@@ -990,7 +1008,7 @@ export function ProfilePage() {
                   </span>
                 </div>
                 <div className="text-secondary small">{profile?.email}</div>
-                <div className="text-muted small mt-1">Vai trò: Khách hàng mua sắm nông sản sạch</div>
+                <div className="text-muted small mt-1">Vai trò: {roleLabel[profile?.role] || 'Khách hàng mua sắm nông sản sạch'}</div>
               </div>
             </div>
           </div>
@@ -1043,23 +1061,6 @@ export function ProfilePage() {
                   </div>
                 </Col>
 
-                <Col xs={12}>
-                  <Form.Group>
-                    <Form.Label className="fw-semibold small">Địa chỉ nhận hàng mặc định</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={2}
-                      value={defaultAddress}
-                      onChange={(e) => setDefaultAddress(e.target.value)}
-                      placeholder="Số nhà, tên đường, phường/xã, quận/huyện..."
-                      className="rounded-3"
-                    />
-                    <Form.Text className="text-muted">
-                      Địa chỉ này sẽ được tự động điền khi bạn tiến hành thanh toán giỏ hàng.
-                    </Form.Text>
-                  </Form.Group>
-                </Col>
-
                 <Col xs={12} className="pt-2">
                   <Button
                     className="primary-btn w-100 py-2 fw-bold"
@@ -1073,6 +1074,8 @@ export function ProfilePage() {
               </Row>
             </Form>
           </Card>
+          {profile?.role === 'USER' || profile?.role === 'PARTNER' ? <AddressBook /> : null}
+          <ChangePasswordCard />
         </Col>
       </Row>
     </Container>
@@ -1090,13 +1093,20 @@ export function PaymentResultPage({ orders = [] }) {
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
 
+  // Uses the payOS status API, which also re-checks with payOS when the webhook has not arrived yet.
+  const knownOrderId = order?.id
   useEffect(() => {
-    if (orderCode) {
-      api.get(`/api/orders/${encodeURIComponent(orderCode)}/payment-status`)
-        .then(setPayment)
-        .catch((caught) => setError(caught.message))
-    }
-  }, [orderCode])
+    if (!orderCode) return undefined
+    let active = true
+    const resolveId = knownOrderId
+      ? Promise.resolve(knownOrderId)
+      : api.get(`/api/orders/code/${encodeURIComponent(orderCode)}`).then((o) => o.id)
+    resolveId
+      .then((id) => api.get(`/api/payments/order/${id}/status`))
+      .then((s) => { if (active) setPayment({ orderCode: s.orderCode, amount: s.amount, status: s.paymentStatus, orderStatus: s.orderStatus }) })
+      .catch((caught) => { if (active) setError(caught.message) })
+    return () => { active = false }
+  }, [orderCode, knownOrderId])
 
   const copyCode = () => {
     if (!orderCode) return

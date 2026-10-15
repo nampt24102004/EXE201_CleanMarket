@@ -47,6 +47,8 @@ class PayOSPaymentServiceTest {
     @Mock OrderStatusHistoryService history;
     @Mock ApplicationEventPublisher events;
     @Mock VoucherService voucherService;
+    @Mock com.app.features.orders.service.PartnerOrderNotifier partnerNotifier;
+    @Mock com.app.features.feedback.service.LatePaymentRefunds latePayments;
 
     PayOSPaymentServiceImpl service;
     UserAccount owner;
@@ -55,7 +57,7 @@ class PayOSPaymentServiceTest {
 
     @BeforeEach void setup() {
         service = new PayOSPaymentServiceImpl(payments, transactions, orders, orderItems, notifications,
-            current, provider, history, events, voucherService);
+            current, provider, history, events, voucherService, partnerNotifier, latePayments);
         owner = new UserAccount(); owner.setId(10L); owner.setEmail("buyer@example.test"); owner.setFullName("Buyer");
         order = new MarketOrder(); order.setId(25L); order.setUser(owner); order.setOrderCode("CM25");
         order.setPaymentMethod("PAYOS"); order.setStatus("PENDING_PAYMENT"); order.setTotalAmount(new BigDecimal("300000"));
@@ -115,6 +117,20 @@ class PayOSPaymentServiceTest {
         verify(history).record(order, "CONFIRMED", null, "payOS webhook đã xác minh");
         verify(events).publishEvent(isA(PaymentSucceededMailEvent.class));
         verify(notifications).save(any());
+    }
+
+    @Test void paymentArrivingAfterCancellationIsRecordedAndRefundedInsteadOfRejected() {
+        order.setStatus("CANCELLED"); payment.setStatus("CANCELLED"); payment.setProviderPaymentLinkId("link-55");
+        when(provider.verifyWebhook(any())).thenReturn(webhookResult(55L, 300000L, "TXN-LATE"));
+        when(payments.lockByProviderOrderCode(55L)).thenReturn(Optional.of(payment));
+        when(transactions.existsByProviderTransactionNo("TXN-LATE")).thenReturn(false);
+        var response = service.handleWebhook(successWebhook());
+        assertTrue(response.success());
+        assertEquals("PAID", payment.getStatus());
+        assertEquals("TXN-LATE", payment.getProviderTransactionNo());
+        assertEquals("CANCELLED", order.getStatus());
+        verify(latePayments).openFor(payment);
+        verify(events, never()).publishEvent(isA(PaymentSucceededMailEvent.class));
     }
 
     @Test void invalidWebhookSignatureDoesNotChangePayment() {

@@ -38,6 +38,6 @@ import org.springframework.transaction.annotation.Transactional;
     }
     @Transactional public ApiResponse<Void> delete(Long id) { cart.delete(owned(id)); return ApiResponse.ok(null); }
     private CartItem owned(Long id) { CartItem item = cart.findById(id).orElseThrow(() -> BusinessException.missing("Mục giỏ hàng")); if (!item.getUser().getId().equals(current.get().getId())) throw BusinessException.forbidden(); return item; }
-    private Product saleable(Long id) { Product p = products.findById(id).orElseThrow(() -> BusinessException.missing("Sản phẩm")); if (!"ACTIVE".equals(p.getStatus()) || !"APPROVED".equals(p.getApprovalStatus()) || !"APPROVED".equals(p.getSupplier().getStatus())) throw BusinessException.bad("PRODUCT_UNAVAILABLE", "Sản phẩm không còn được bán"); return p; }
+    private Product saleable(Long id) { Product p = products.findById(id).orElseThrow(() -> BusinessException.missing("Sản phẩm")); if (!"ACTIVE".equals(p.getStatus()) || !"APPROVED".equals(p.getApprovalStatus()) || !"APPROVED".equals(p.getSupplier().getStatus()) || !p.getCategory().isActive()) throw BusinessException.bad("PRODUCT_UNAVAILABLE", "Sản phẩm không còn được bán"); return p; }
     private CartView view(CartItem item) { Product p = item.getProduct(); return new CartView(item.getId(), p.getId(), p.getName(), p.getSupplier().getName(), p.getPrice(), p.getUnit(), item.getQuantity(), p.getPrice().multiply(item.getQuantity())); }
 }

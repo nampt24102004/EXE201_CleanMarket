@@ -11,5 +11,7 @@ public interface OrderService {
     List<OrderView> mine();
     OrderView cancel(Long id);
     OrderView cancelByStaff(Long id, String reason);
+    /** Cancels a payOS order whose payment window has passed; returns false when it is not (yet) eligible. */
+    boolean expireUnpaid(Long id);
     OrderView view(MarketOrder order);
 }
