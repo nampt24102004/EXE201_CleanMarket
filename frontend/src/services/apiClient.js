@@ -28,7 +28,7 @@ export function resetCsrfToken() {
   csrfToken = null
 }
 
-export async function apiRequest(path, options = {}) {
+export async function apiRequest(path, options = {}, retryCsrf = true) {
   const method = (options.method || 'GET').toUpperCase()
   const headers = new Headers(options.headers || {})
   const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(method)
@@ -43,6 +43,10 @@ export async function apiRequest(path, options = {}) {
     body: options.body === undefined || options.body instanceof FormData ? options.body : JSON.stringify(options.body),
   })
   const payload = await readPayload(response)
+  if (unsafe && retryCsrf && response.status === 403 && payload?.code === 'CSRF_INVALID') {
+    resetCsrfToken()
+    return apiRequest(path, options, false)
+  }
   if (!response.ok || payload?.success === false) {
     throw new ApiError(payload?.message || `Yêu cầu thất bại (${response.status}).`, response.status, payload?.code, payload?.errors || [])
   }

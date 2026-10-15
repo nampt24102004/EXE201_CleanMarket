@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Alert, Badge, Button, Col, Container, Form, InputGroup, Row, Spinner, Stack } from 'react-bootstrap'
 import PaymentMethod from '../../components/order/PaymentMethod'
 import OrderSummary from '../../components/order/OrderSummary'
@@ -11,6 +11,7 @@ function CheckoutPage({
   customerInfo,
   paymentMethod,
   validationErrors,
+  submitting,
   onCustomerInfoChange,
   onPaymentMethodChange,
   onConfirmOrder,
@@ -27,6 +28,7 @@ function CheckoutPage({
   const [platformCode, setPlatformCode] = useState('')
   const [partnerInputs, setPartnerInputs] = useState({})
   const [partnerCodes, setPartnerCodes] = useState({})
+  const quoteRequestId = useRef(0)
   const selectedZone = shippingZones.find((zone) => zone.zoneCode === shippingZoneCode)
   const shippingAddress = selectedZone && customerInfo.address?.trim()
     ? `${customerInfo.address.trim()}, ${selectedZone.zoneName}`
@@ -42,22 +44,24 @@ function CheckoutPage({
   }, [])
 
   useEffect(() => {
+    const requestId = ++quoteRequestId.current
     if (!shippingAddress) return undefined
     const timer = setTimeout(async () => {
       setQuoting(true); setQuoteError('')
       try {
-        setQuote(
-          await api.post('/api/checkout/quote', {
-            address: shippingAddress,
-            platformVoucherCode: platformCode || null,
-            partnerVoucherCodes: Object.values(partnerCodes).filter(Boolean),
-          })
-        )
+        const nextQuote = await api.post('/api/checkout/quote', {
+          address: shippingAddress,
+          platformVoucherCode: platformCode || null,
+          partnerVoucherCodes: Object.values(partnerCodes).filter(Boolean),
+        })
+        if (requestId === quoteRequestId.current) setQuote(nextQuote)
       } catch (error) {
-        setQuote(null)
-        setQuoteError(error.message)
+        if (requestId === quoteRequestId.current) {
+          setQuote(null)
+          setQuoteError(error.message)
+        }
       } finally {
-        setQuoting(false)
+        if (requestId === quoteRequestId.current) setQuoting(false)
       }
     }, 400)
     return () => clearTimeout(timer)
@@ -85,6 +89,7 @@ function CheckoutPage({
   }
 
   const submit = () => {
+    if (submitting) return
     const errors = []
     if (!shippingZoneCode) errors.push('Vui lòng chọn khu vực giao hàng.')
     if (!customerInfo.address?.trim()) errors.push('Vui lòng nhập địa chỉ giao hàng.')
@@ -264,9 +269,10 @@ function CheckoutPage({
               className="primary-btn py-3 fs-6 w-100 fw-bold"
               size="lg"
               onClick={submit}
-              disabled={!activeQuote || quoting}
+              disabled={!activeQuote || quoting || submitting}
             >
-              <span>Xác nhận & Hoàn tất đơn hàng</span>
+              {submitting && <Spinner size="sm" />}
+              <span>{submitting ? 'Đang tạo đơn hàng...' : 'Xác nhận & Hoàn tất đơn hàng'}</span>
               <ArrowRight size={18} />
             </Button>
           </Stack>

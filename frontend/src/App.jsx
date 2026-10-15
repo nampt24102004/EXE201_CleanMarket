@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, Container, Spinner } from 'react-bootstrap'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import Header from './components/layout/Header'
@@ -107,6 +107,8 @@ function AppContent() {
   const [placedOrder, setPlacedOrder] = useState(null)
   const [catalogLoading, setCatalogLoading] = useState(true)
   const [apiError, setApiError] = useState('')
+  const [checkoutSubmitting, setCheckoutSubmitting] = useState(false)
+  const checkoutInFlight = useRef(false)
 
   const showError = useCallback((caught) => {
     if (isPartner && caught?.status === 403) return
@@ -207,22 +209,28 @@ function AppContent() {
   const goCheckout = () => navigate(hasRole('USER') ? '/checkout' : '/login', { state: { from: '/checkout' } })
   const buyNow = async (product, value) => { await addToCart(product, value); if (hasRole('USER')) navigate('/checkout') }
 
-  const confirmOrder = async () => {
+  const confirmOrder = async (checkout = {}) => {
+    const shippingAddress = checkout.shippingAddress?.trim() || customerInfo.address.trim()
     const errors = []
     if (!customerInfo.fullName.trim()) errors.push('Vui lòng nhập họ và tên.')
     if (!/^0\d{9}$/.test(customerInfo.phone.trim())) errors.push('Vui lòng nhập số điện thoại gồm 10 chữ số, bắt đầu bằng 0.')
-    if (!customerInfo.address.trim()) errors.push('Vui lòng nhập địa chỉ giao hàng.')
+    if (!shippingAddress) errors.push('Vui lòng nhập địa chỉ giao hàng.')
     if (!paymentMethod) errors.push('Vui lòng chọn phương thức thanh toán.')
     if (!cartItems.length) errors.push('Giỏ hàng của bạn đang trống.')
     setValidationErrors(errors)
-    if (errors.length) return
+    if (errors.length || checkoutInFlight.current) return
+    checkoutInFlight.current = true
+    setCheckoutSubmitting(true)
+    setApiError('')
     try {
       const result = await api.post('/api/orders/checkout', {
         fullName: customerInfo.fullName,
         phone: customerInfo.phone,
-        address: customerInfo.address,
+        address: shippingAddress,
         note: customerInfo.note,
         paymentMethod: paymentMethod.toUpperCase(),
+        platformVoucherCode: checkout.platformVoucherCode || null,
+        partnerVoucherCodes: checkout.partnerVoucherCodes || [],
       })
       const order = normalizeOrder(result, products, user.email)
       setPlacedOrder(order)
@@ -238,7 +246,12 @@ function AppContent() {
           navigate(`/payment/payos?orderId=${order.id}`)
         }
       } else navigate('/order-success')
-    } catch (caught) { showError(caught) }
+    } catch (caught) {
+      showError(caught)
+    } finally {
+      checkoutInFlight.current = false
+      setCheckoutSubmitting(false)
+    }
   }
 
   const protect = (roles, element) => <ProtectedRoute roles={roles}>{element}</ProtectedRoute>
@@ -290,7 +303,7 @@ function AppContent() {
       <Route path="/trace/:traceCode" element={<TracePage />} />
       <Route path="/login" element={<AuthPage />} /><Route path="/register" element={<AuthPage registerMode />} /><Route path="/verify-email" element={<VerifyEmailPage />} /><Route path="/forgot-password" element={<ForgotPasswordPage />} /><Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/cart" element={<CartPage cartItems={cartItems} onUpdateQuantity={updateCart} onRemoveItem={removeCartItem} onCheckout={goCheckout} onOpenProducts={() => navigate('/products')} />} />
-      <Route path="/checkout" element={protect(['USER'], cartItems.length ? <CheckoutPage cartItems={cartItems} customerInfo={customerInfo} paymentMethod={paymentMethod} validationErrors={validationErrors} onCustomerInfoChange={setCustomerInfo} onPaymentMethodChange={setPaymentMethod} onConfirmOrder={confirmOrder} /> : <Navigate to="/cart" replace />)} />
+      <Route path="/checkout" element={protect(['USER'], cartItems.length ? <CheckoutPage cartItems={cartItems} customerInfo={customerInfo} paymentMethod={paymentMethod} validationErrors={validationErrors} submitting={checkoutSubmitting} onCustomerInfoChange={setCustomerInfo} onPaymentMethodChange={setPaymentMethod} onConfirmOrder={confirmOrder} /> : <Navigate to="/cart" replace />)} />
       <Route path="/order-success" element={protect(['USER'], placedOrder ? <OrderSuccessPage order={placedOrder} onBackHome={() => navigate('/orders')} /> : <Navigate to="/orders" replace />)} />
       <Route path="/payment-result" element={protect(['USER'], <PaymentResultPage orders={orders} />)} />
       <Route path="/payment/payos" element={protect(['USER'], <PayOSPaymentPage />)} />

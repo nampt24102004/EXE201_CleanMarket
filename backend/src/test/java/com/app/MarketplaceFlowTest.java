@@ -84,9 +84,12 @@ class MarketplaceFlowTest {
         var registered = mvc.perform(post("/api/auth/register").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"fullName\":\"Buyer\",\"email\":\"" + email + "\",\"password\":\"secure-pass-123\"}")).andExpect(status().isOk()).andReturn();
         MockHttpSession session = (MockHttpSession) registered.getRequest().getSession(false);
         assertNotNull(session);
-        mvc.perform(get("/api/users/me")).andExpect(status().isForbidden());
-        mvc.perform(get("/api/admin/users").session(session)).andExpect(status().isForbidden());
-        mvc.perform(post("/api/cart/items").session(session)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/users/me")).andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
+        mvc.perform(get("/api/admin/users").session(session)).andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        mvc.perform(post("/api/cart/items").session(session)).andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("CSRF_INVALID"));
         mvc.perform(get("/api/categories")).andExpect(status().isOk());
         mvc.perform(get("/api/products")).andExpect(status().isOk());
         mvc.perform(get("/api/suppliers")).andExpect(status().isOk());
@@ -132,12 +135,14 @@ class MarketplaceFlowTest {
         assertNotEquals(originalSessionId, session.getId());
         mvc.perform(get("/api/auth/me").session(session)).andExpect(status().isOk())
             .andExpect(jsonPath("$.data.email").value("session@example.test"));
-        mvc.perform(post("/api/auth/logout").session(session).header("X-CSRF-TOKEN", csrfToken)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/auth/logout").session(session).header("X-CSRF-TOKEN", csrfToken)).andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("CSRF_INVALID"));
         String refreshedToken = body(mvc.perform(get("/api/auth/csrf").session(session)).andExpect(status().isOk())
             .andReturn().getResponse().getContentAsString()).path("data").path("token").asText();
         mvc.perform(post("/api/auth/logout").session(session).header("X-CSRF-TOKEN", refreshedToken)).andExpect(status().isNoContent());
         assertTrue(session.isInvalid());
-        mvc.perform(get("/api/auth/me")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
     }
 
     @Test void roleAssignmentsAndAddressesPersist() {

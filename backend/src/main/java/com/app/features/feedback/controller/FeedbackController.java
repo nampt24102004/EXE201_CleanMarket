@@ -28,10 +28,10 @@ public class FeedbackController {
     public ApiResponse<ComplaintView> complaint(@Valid @RequestBody ComplaintRequest request) { return service.complaint(request); }
     @GetMapping("/complaints/my") @PreAuthorize("hasRole('USER')")
     public ApiResponse<List<ComplaintView>> myComplaints() { return service.myComplaints(); }
-    @GetMapping("/manager/complaints") @PreAuthorize("hasRole('MANAGER')")
+    @GetMapping("/manager/complaints") @PreAuthorize("hasAnyRole('MANAGER','ADMIN')")
     public ApiResponse<List<ComplaintView>> pending() { return service.pending(); }
-    @PutMapping("/manager/complaints/{id}/resolve") @PreAuthorize("hasRole('MANAGER')") @Transactional
+    @PutMapping("/manager/complaints/{id}/resolve") @PreAuthorize("hasAnyRole('MANAGER','ADMIN')") @Transactional
     public ApiResponse<ComplaintView> resolve(@PathVariable Long id, @Valid @RequestBody ResolutionRequest request) { return service.resolve(id, request); }
-    @PostMapping("/manager/complaints/{id}/refunds") @PreAuthorize("hasRole('MANAGER')") @Transactional
+    @PostMapping("/manager/complaints/{id}/refunds") @PreAuthorize("hasAnyRole('MANAGER','ADMIN')") @Transactional
     public ApiResponse<RefundView> refund(@PathVariable Long id, @Valid @RequestBody RefundRequest request) { return service.refund(id, request); }
 }

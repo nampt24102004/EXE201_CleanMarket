@@ -129,6 +129,7 @@ class AdminApiTest {
     @Test void dashboardAndReportsRespond() throws Exception {
         mvc.perform(get("/api/admin/dashboard/summary").session(admin)).andExpect(status().isOk())
             .andExpect(jsonPath("$.data.totalUsers").isNumber()).andExpect(jsonPath("$.data.ordersByStatus").isMap());
+        mvc.perform(get("/api/manager/complaints").session(admin)).andExpect(status().isOk());
         mvc.perform(get("/api/admin/reports/revenue").session(admin)).andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(30));
         mvc.perform(get("/api/admin/reports/revenue").param("from", "2026-01-01").param("to", "2026-03-31").param("groupBy", "month").session(admin))
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(3));

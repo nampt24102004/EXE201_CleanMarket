@@ -6,6 +6,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -20,6 +21,7 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 
 @Service
+@ConditionalOnProperty(name = "app.storage.provider", havingValue = "r2", matchIfMissing = true)
 public class R2StorageService implements StorageService {
     private static final Set<String> IMAGE_MIME = Set.of("image/jpeg", "image/png");
     private static final Set<String> DOCUMENT_MIME = Set.of("image/jpeg", "image/png", "application/pdf");
