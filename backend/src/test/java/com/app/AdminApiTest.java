@@ -178,6 +178,35 @@ class AdminApiTest {
             .andExpect(jsonPath("$.data.items[0].title").value(org.hamcrest.Matchers.startsWith("Đơn hàng mới")));
     }
 
+    @Autowired com.app.features.payments.repository.PaymentRepository paymentRepository;
+
+    @Test void managerConfirmsDeliveryOfAPaidOrderForEveryFarm() throws Exception {
+        Product carrot = seedProduct();
+        account("buyer4-" + tag, "USER");
+        MockHttpSession buyer = login("buyer4-" + tag);
+        mvc.perform(post("/api/cart/items").with(csrf()).session(buyer).contentType(MediaType.APPLICATION_JSON).content("{\"productId\":" + carrot.getId() + ",\"quantity\":1}")).andExpect(status().isOk());
+        JsonNode order = body(mvc.perform(post("/api/orders/checkout").with(csrf()).session(buyer).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"fullName\":\"Buyer\",\"phone\":\"0912345678\",\"address\":\"Hanoi\",\"paymentMethod\":\"PAYOS\"}")).andExpect(status().isOk()));
+        long orderId = order.path("data").path("id").asLong();
+        long partId = order.path("data").path("supplierOrders").get(0).path("id").asLong();
+
+        // Nothing is confirmed before the money has arrived.
+        put(admin, "/api/manager/orders/" + orderId + "/delivered", "{}").andExpect(status().isBadRequest());
+        paymentRepository.findByOrderIdOrderByCreatedAtDesc(orderId).forEach(p -> { p.setStatus("PAID"); paymentRepository.save(p); });
+        put(login("farm-" + tag), "/api/partner/orders/" + partId + "/status", "{\"status\":\"CONFIRMED\"}").andExpect(status().isOk());
+
+        put(admin, "/api/manager/orders/" + orderId + "/delivered", "{\"note\":\"Khách đã nhận đủ hàng\"}").andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.status").value("DELIVERED"))
+            .andExpect(jsonPath("$.data.supplierOrders[0].status").value("DELIVERED"));
+        put(admin, "/api/manager/orders/" + orderId + "/delivered", "{}").andExpect(status().isConflict());
+        mvc.perform(get("/api/manager/orders/" + orderId).session(admin)).andExpect(jsonPath("$.data.history[-1].note").value("Khách đã nhận đủ hàng"));
+
+        mvc.perform(get("/api/notifications").session(login("farm-" + tag)))
+            .andExpect(jsonPath("$.data.items[0].title").value(org.hamcrest.Matchers.endsWith("đã giao thành công")));
+        mvc.perform(get("/api/admin/audit-logs").param("action", "ORDER_DELIVERED_BY_STAFF").param("entityId", String.valueOf(orderId)).session(admin))
+            .andExpect(jsonPath("$.data.total").value(1));
+    }
+
     @Test void dashboardAndReportsRespond() throws Exception {
         mvc.perform(get("/api/admin/dashboard/summary").session(admin)).andExpect(status().isOk())
             .andExpect(jsonPath("$.data.totalUsers").isNumber()).andExpect(jsonPath("$.data.ordersByStatus").isMap());
