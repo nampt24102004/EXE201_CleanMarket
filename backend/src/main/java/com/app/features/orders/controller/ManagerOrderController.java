@@ -25,7 +25,14 @@ public class ManagerOrderController {
         return service.list(status, paymentMethod, q, from, to, page, size);
     }
     @GetMapping("/{id}") public ApiResponse<OrderDetail> detail(@PathVariable Long id) { return service.detail(id); }
-    @PutMapping("/{id}/delivered") public ApiResponse<OrderServiceDto.OrderView> delivered(@PathVariable Long id, @Valid @RequestBody(required = false) DeliveredRequest request) {
+    // Delivery confirmation is a store-operations decision, so it belongs to managers only.
+    @GetMapping("/awaiting-delivery") @org.springframework.security.access.prepost.PreAuthorize("hasRole('MANAGER')")
+    public ApiResponse<java.util.List<com.app.features.orders.dto.ManagerOrderDto.AwaitingDelivery>> awaitingDelivery() { return service.awaitingDelivery(); }
+    @PutMapping("/delivered") @org.springframework.security.access.prepost.PreAuthorize("hasRole('MANAGER')")
+    public ApiResponse<com.app.features.orders.dto.ManagerOrderDto.BulkDeliveredResult> deliveredAll(@Valid @RequestBody(required = false) DeliveredRequest request) {
+        return service.confirmAllDelivered(request == null ? null : request.note());
+    }
+    @PutMapping("/{id}/delivered") @org.springframework.security.access.prepost.PreAuthorize("hasRole('MANAGER')") public ApiResponse<OrderServiceDto.OrderView> delivered(@PathVariable Long id, @Valid @RequestBody(required = false) DeliveredRequest request) {
         return service.confirmDelivered(id, request == null ? null : request.note());
     }
     @PutMapping("/{id}/cancel") public ApiResponse<OrderServiceDto.OrderView> cancel(@PathVariable Long id, @Valid @RequestBody CancelRequest request) { return service.cancel(id, request.reason()); }

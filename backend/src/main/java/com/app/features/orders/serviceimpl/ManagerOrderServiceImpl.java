@@ -78,8 +78,33 @@ import org.springframework.transaction.annotation.Transactional;
         MarketOrder order = orders.lockById(id).orElseThrow(() -> BusinessException.missing("Đơn hàng"));
         if (List.of("DELIVERED", "CANCELLED").contains(order.getStatus())) throw BusinessException.conflict("ORDER_NOT_DELIVERABLE", "Đơn hàng đã giao xong hoặc đã hủy");
         if (!payments.existsByOrderIdAndStatus(id, "PAID")) throw BusinessException.bad("PAYMENT_NOT_PAID", "Chỉ duyệt giao hàng thành công cho đơn đã thanh toán");
-        UserAccount staff = current.get();
-        String reason = note == null || note.isBlank() ? "CleanMarket xác nhận giao hàng thành công" : note.trim();
+        deliver(order, current.get(), reasonFor(note));
+        return ApiResponse.ok(service.view(order));
+    }
+
+    @Transactional(readOnly = true)
+    public ApiResponse<List<AwaitingDelivery>> awaitingDelivery() {
+        return ApiResponse.ok(orders.findPaidAwaitingDelivery().stream()
+            .map(o -> new AwaitingDelivery(o.getId(), o.getOrderCode(), o.getStatus(), o.getTotalAmount(), o.getCreatedAt())).toList());
+    }
+
+    /** Confirms every paid order still waiting, in one go; each one is handled exactly like a single confirmation. */
+    @Transactional
+    public ApiResponse<BulkDeliveredResult> confirmAllDelivered(String note) {
+        UserAccount staff = current.get(); String reason = reasonFor(note); List<String> codes = new ArrayList<>();
+        for (MarketOrder candidate : orders.findPaidAwaitingDelivery()) {
+            MarketOrder order = orders.lockById(candidate.getId()).orElseThrow();
+            if (List.of("DELIVERED", "CANCELLED").contains(order.getStatus())) continue;
+            deliver(order, staff, reason); codes.add(order.getOrderCode());
+        }
+        audit.record(staff, "ORDERS_DELIVERED_BULK", "MarketOrder", 0L, codes.size() + " đơn: " + String.join(", ", codes));
+        return ApiResponse.ok(new BulkDeliveredResult(codes.size(), codes));
+    }
+
+    private static String reasonFor(String note) { return note == null || note.isBlank() ? "CleanMarket xác nhận giao hàng thành công" : note.trim(); }
+
+    private void deliver(MarketOrder order, UserAccount staff, String reason) {
+        Long id = order.getId();
         for (SupplierOrder part : supplierOrders.findByOrderId(id)) {
             if ("DELIVERED".equals(part.getStatus())) continue;
             part.setStatus("DELIVERED");
@@ -91,7 +116,6 @@ import org.springframework.transaction.annotation.Transactional;
         statusHistory.record(order, "DELIVERED", staff, reason);
         buyerNotifier.statusChanged(order, "DELIVERED");
         audit.record(staff, "ORDER_DELIVERED_BY_STAFF", "MarketOrder", id, reason);
-        return ApiResponse.ok(service.view(order));
     }
 
     @Transactional

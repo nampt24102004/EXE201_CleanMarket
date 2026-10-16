@@ -37,6 +37,7 @@ import {
   History,
 } from 'lucide-react'
 import { api } from '../../../services/apiClient'
+import { useAuth } from '../../../context/useAuth'
 import formatCurrency from '../../../utils/formatCurrency'
 
 const orderStatusBadge = {
@@ -53,6 +54,7 @@ const paymentMethodLabel = {
 }
 
 export default function AdminOrdersView() {
+  const { hasRole } = useAuth()
   const [orders, setOrders] = useState([])
   const [pageMeta, setPageMeta] = useState({ totalElements: 0, totalPages: 1 })
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -111,9 +113,44 @@ export default function AdminOrdersView() {
     void Promise.resolve().then(loadOrders)
   }, [loadOrders])
 
+  // Paid orders still waiting for delivery confirmation, for the manager's "approve all" button.
+  const isManager = hasRole('MANAGER')
+  const [awaitingDelivery, setAwaitingDelivery] = useState([])
+  const [bulkDelivering, setBulkDelivering] = useState(false)
+  const loadAwaitingDelivery = useCallback(async () => {
+    if (!isManager) return
+    try {
+      setAwaitingDelivery((await api.get('/api/manager/orders/awaiting-delivery')) || [])
+    } catch {
+      setAwaitingDelivery([])
+    }
+  }, [isManager])
+
+  useEffect(() => {
+    void Promise.resolve().then(loadAwaitingDelivery)
+  }, [loadAwaitingDelivery])
+
+  const handleConfirmAllDelivered = async () => {
+    const codes = awaitingDelivery.map((o) => `#${o.orderCode}`)
+    const preview = codes.slice(0, 10).join(', ') + (codes.length > 10 ? `, … (+${codes.length - 10})` : '')
+    if (!window.confirm(`Duyệt giao hàng thành công cho ${codes.length} đơn đã thanh toán?\n${preview}\n\nKhách hàng và các nhà vườn của từng đơn sẽ nhận thông báo.`)) return
+    setBulkDelivering(true)
+    setError('')
+    setNotice('')
+    try {
+      const result = await api.put('/api/manager/orders/delivered', {})
+      setNotice(`Đã duyệt giao hàng thành công cho ${result.confirmed} đơn.`)
+      await Promise.all([loadOrders(), loadAwaitingDelivery()])
+    } catch (err) {
+      setError(`Lỗi duyệt giao hàng: ${err.message}`)
+    } finally {
+      setBulkDelivering(false)
+    }
+  }
+
   const handleRefresh = async () => {
     setRefreshing(true)
-    await loadOrders()
+    await Promise.all([loadOrders(), loadAwaitingDelivery()])
   }
 
   // Load Order Detail
@@ -131,8 +168,9 @@ export default function AdminOrdersView() {
     }
   }
 
-  // A paid order that has not finished yet can be confirmed as delivered for every farm at once.
+  // A manager can confirm a paid, unfinished order as delivered for every farm at once.
   const canConfirmDelivered = (detail) =>
+    hasRole('MANAGER') &&
     !!detail?.order &&
     !['DELIVERED', 'CANCELLED'].includes(detail.order.status) &&
     (detail.payments || []).some((p) => p.status === 'PAID')
@@ -151,6 +189,7 @@ export default function AdminOrdersView() {
       await api.put(`/api/manager/orders/${id}/delivered`, { note: note.trim() || null })
       setNotice(`Đã duyệt giao hàng thành công cho đơn #${orderCode}.`)
       await handleOpenDetail(id)
+      await loadAwaitingDelivery()
       await loadOrders()
     } catch (err) {
       setDetailModalError(err.message || 'Không thể duyệt giao hàng.')
@@ -268,6 +307,19 @@ export default function AdminOrdersView() {
         </div>
 
         <div className="d-flex align-items-center gap-2">
+          {isManager && (
+            <Button
+              variant="success"
+              size="sm"
+              className="d-flex align-items-center gap-2 px-3 py-2 rounded-3 shadow-sm"
+              onClick={handleConfirmAllDelivered}
+              disabled={bulkDelivering || awaitingDelivery.length === 0}
+              title="Duyệt giao hàng thành công cho mọi đơn đã thanh toán đang chờ"
+            >
+              {bulkDelivering ? <Spinner animation="border" size="sm" /> : <CheckCircle2 size={15} />}
+              <span className="fw-semibold">Duyệt tất cả ({awaitingDelivery.length} đơn đã thanh toán)</span>
+            </Button>
+          )}
           <Button
             variant="light"
             size="sm"

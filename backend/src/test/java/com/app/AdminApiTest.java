@@ -191,20 +191,55 @@ class AdminApiTest {
         long partId = order.path("data").path("supplierOrders").get(0).path("id").asLong();
 
         // Nothing is confirmed before the money has arrived.
-        put(admin, "/api/manager/orders/" + orderId + "/delivered", "{}").andExpect(status().isBadRequest());
+        account("manager-" + tag, "MANAGER");
+        MockHttpSession manager = login("manager-" + tag);
+        // Delivery confirmation is for managers, not admins.
+        put(admin, "/api/manager/orders/" + orderId + "/delivered", "{}").andExpect(status().isForbidden());
+        put(manager, "/api/manager/orders/" + orderId + "/delivered", "{}").andExpect(status().isBadRequest());
         paymentRepository.findByOrderIdOrderByCreatedAtDesc(orderId).forEach(p -> { p.setStatus("PAID"); paymentRepository.save(p); });
         put(login("farm-" + tag), "/api/partner/orders/" + partId + "/status", "{\"status\":\"CONFIRMED\"}").andExpect(status().isOk());
 
-        put(admin, "/api/manager/orders/" + orderId + "/delivered", "{\"note\":\"Khách đã nhận đủ hàng\"}").andExpect(status().isOk())
+        put(manager, "/api/manager/orders/" + orderId + "/delivered", "{\"note\":\"Khách đã nhận đủ hàng\"}").andExpect(status().isOk())
             .andExpect(jsonPath("$.data.status").value("DELIVERED"))
             .andExpect(jsonPath("$.data.supplierOrders[0].status").value("DELIVERED"));
-        put(admin, "/api/manager/orders/" + orderId + "/delivered", "{}").andExpect(status().isConflict());
+        put(manager, "/api/manager/orders/" + orderId + "/delivered", "{}").andExpect(status().isConflict());
         mvc.perform(get("/api/manager/orders/" + orderId).session(admin)).andExpect(jsonPath("$.data.history[-1].note").value("Khách đã nhận đủ hàng"));
 
         mvc.perform(get("/api/notifications").session(login("farm-" + tag)))
             .andExpect(jsonPath("$.data.items[0].title").value(org.hamcrest.Matchers.endsWith("đã giao thành công")));
-        mvc.perform(get("/api/admin/audit-logs").param("action", "ORDER_DELIVERED_BY_STAFF").param("entityId", String.valueOf(orderId)).session(admin))
+        mvc.perform(get("/api/admin/audit-logs").param("action", "ORDER_DELIVERED_BY_STAFF").param("entityType", "MarketOrder").param("entityId", String.valueOf(orderId)).session(admin))
             .andExpect(jsonPath("$.data.total").value(1));
+        mvc.perform(get("/api/admin/audit-logs").param("action", "SUPPLIER_ORDER_DELIVERED_BY_STAFF").param("entityType", "SupplierOrder").param("entityId", String.valueOf(partId)).session(admin))
+            .andExpect(jsonPath("$.data.total").value(1));
+    }
+
+    @Test void managerApprovesEveryPaidOrderAtOnce() throws Exception {
+        Product carrot = seedProduct();
+        account("buyer5-" + tag, "USER");
+        MockHttpSession buyer = login("buyer5-" + tag);
+        java.util.List<String> codes = new java.util.ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            mvc.perform(post("/api/cart/items").with(csrf()).session(buyer).contentType(MediaType.APPLICATION_JSON).content("{\"productId\":" + carrot.getId() + ",\"quantity\":1}")).andExpect(status().isOk());
+            JsonNode order = body(mvc.perform(post("/api/orders/checkout").with(csrf()).session(buyer).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fullName\":\"Buyer\",\"phone\":\"0912345678\",\"address\":\"Hanoi\",\"paymentMethod\":\"PAYOS\"}")).andExpect(status().isOk()));
+            codes.add(order.path("data").path("orderCode").asText());
+            // The first two are paid; the third never is and must be left alone.
+            if (i < 2) paymentRepository.findByOrderIdOrderByCreatedAtDesc(order.path("data").path("id").asLong()).forEach(p -> { p.setStatus("PAID"); paymentRepository.save(p); });
+        }
+        account("manager2-" + tag, "MANAGER");
+        MockHttpSession manager = login("manager2-" + tag);
+        mvc.perform(get("/api/manager/orders/awaiting-delivery").session(admin)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/manager/orders/awaiting-delivery").session(manager)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data[*].orderCode").value(org.hamcrest.Matchers.hasItems(codes.get(0), codes.get(1))))
+            .andExpect(jsonPath("$.data[*].orderCode").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem(codes.get(2)))));
+
+        put(manager, "/api/manager/orders/delivered", "{}").andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.orderCodes").value(org.hamcrest.Matchers.hasItems(codes.get(0), codes.get(1))));
+        mvc.perform(get("/api/manager/orders").param("q", codes.get(0)).session(manager)).andExpect(jsonPath("$.data.items[0].status").value("DELIVERED"));
+        mvc.perform(get("/api/manager/orders").param("q", codes.get(2)).session(manager)).andExpect(jsonPath("$.data.items[0].status").value("PENDING_PAYMENT"));
+        mvc.perform(get("/api/manager/orders/awaiting-delivery").session(manager)).andExpect(jsonPath("$.data.length()").value(0));
+        var titles = mvc.perform(get("/api/notifications").session(buyer)).andReturn().getResponse().getContentAsString();
+        assertTrue(titles.contains(codes.get(0) + " đã giao thành công") && titles.contains(codes.get(1) + " đã giao thành công"), titles);
     }
 
     @Test void dashboardAndReportsRespond() throws Exception {

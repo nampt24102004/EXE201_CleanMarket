@@ -11,4 +11,6 @@ public interface ManagerOrderService {
     ApiResponse<OrderDetail> detail(Long id);
     ApiResponse<OrderServiceDto.OrderView> cancel(Long id, String reason);
     ApiResponse<OrderServiceDto.OrderView> confirmDelivered(Long id, String note);
+    ApiResponse<java.util.List<com.app.features.orders.dto.ManagerOrderDto.AwaitingDelivery>> awaitingDelivery();
+    ApiResponse<com.app.features.orders.dto.ManagerOrderDto.BulkDeliveredResult> confirmAllDelivered(String note);
 }
