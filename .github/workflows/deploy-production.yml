@@ -19,6 +19,9 @@ env:
   CLOUD_RUN_SERVICE: cleanmarket-api
   IMAGE_URI: asia-southeast1-docker.pkg.dev/project-7180b607-0de7-493c-969/cloud-run-source-deploy/cleanmarket-api
   FIREBASE_PROJECT_ID: project-7180b607-0de7-493c-969
+  # OAuth Web client for Sign in with Google. A client ID is public, so it lives here
+  # rather than in Secret Manager; the frontend build and the backend token check share it.
+  GOOGLE_CLIENT_ID: 138134406216-85fpph16gig7puippuhuvdu81fbjjd5v.apps.googleusercontent.com
 
 jobs:
   test-build-deploy:
@@ -53,6 +56,8 @@ jobs:
 
       - name: Test and build frontend
         working-directory: frontend
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ env.GOOGLE_CLIENT_ID }}
         run: |
           npm ci
           npm run lint
@@ -88,6 +93,9 @@ jobs:
           region: ${{ env.GCP_REGION }}
           service: ${{ env.CLOUD_RUN_SERVICE }}
           image: ${{ env.IMAGE_URI }}:${{ github.sha }}
+          # Merged into the service's existing variables; secrets stay as they are.
+          env_vars: |
+            GOOGLE_CLIENT_ID=${{ env.GOOGLE_CLIENT_ID }}
 
       # GitHub OIDC credentials are short lived. Refresh immediately before
       # Firebase Hosting deploys and pins /api/** to the new Cloud Run revision.
