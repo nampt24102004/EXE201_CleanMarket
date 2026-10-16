@@ -208,15 +208,68 @@ Các bài test backend sử dụng H2 nên không yêu cầu MySQL. Test hiện 
 
 Nếu phát hiện vấn đề bảo mật, không đăng thông tin nhạy cảm trong issue công khai. Hãy liên hệ trực tiếp với nhóm phát triển.
 
-## Triển khai
+## Triển khai production tự động
 
-- Frontend được build bằng Vite và phát hành qua Firebase Hosting.
-- `/api/**` được Firebase Hosting rewrite tới service `cleanmarket-api` trên Cloud Run.
-- Backend được đóng gói bằng Docker và chạy với profile `prod`.
-- MySQL production chạy trên Cloud SQL.
-- Mật khẩu và khóa dịch vụ được quản lý bằng Google Secret Manager.
-- Mỗi lần code được push hoặc merge vào `main`, workflow `Deploy production` tự động chạy test, build container, áp dụng migration mới, deploy Cloud Run, deploy Firebase Hosting và smoke-test website.
-- GitHub Actions xác thực với Google Cloud bằng OIDC/Workload Identity Federation; repository không lưu khóa service account dài hạn.
+Production hoạt động tại [https://cleanmarket.io.vn](https://cleanmarket.io.vn). Frontend được phát hành qua Firebase Hosting; các request `/api/**` được chuyển tiếp tới backend `cleanmarket-api` trên Cloud Run. Backend sử dụng Cloud SQL for MySQL và lấy các thông tin nhạy cảm từ Google Secret Manager.
+
+Workflow [`.github/workflows/deploy-production.yml`](.github/workflows/deploy-production.yml) tự động chạy khi có commit được push hoặc pull request được merge vào nhánh `main`. Thành viên trong nhóm không cần deploy thủ công và không cần tải khóa Google Cloud về máy.
+
+### Quy trình của pipeline
+
+Pipeline `Deploy production` thực hiện lần lượt:
+
+1. Chạy toàn bộ test backend bằng Maven.
+2. Chạy lint và build frontend bằng npm/Vite.
+3. Build Docker image backend và đẩy image được gắn đúng Git commit SHA lên Artifact Registry.
+4. Deploy image mới lên Cloud Run. Backend chạy Flyway migration trước khi Hibernate kiểm tra schema.
+5. Deploy frontend mới lên Firebase Hosting và cập nhật rewrite `/api/**` tới revision Cloud Run mới.
+6. Gọi API production để smoke test. Chỉ khi tất cả bước đều thành công thì workflow mới có trạng thái xanh.
+
+GitHub Actions xác thực với Google Cloud bằng OIDC/Workload Identity Federation. Repository không lưu service-account key dài hạn. Danh tính deploy chỉ được chấp nhận từ repository này và nhánh `main`.
+
+### Cách đưa thay đổi lên production
+
+1. Tạo branch mới từ `main`, thực hiện thay đổi và commit.
+2. Chạy kiểm tra ở máy cá nhân:
+
+   ```powershell
+   cd backend
+   .\mvnw.cmd test
+
+   cd ..\frontend
+   npm ci
+   npm run lint
+   npm run build
+   ```
+
+3. Push branch và tạo pull request vào `main`.
+4. Sau khi review, merge pull request. Commit trên `main` sẽ tự kích hoạt pipeline.
+5. Theo dõi tab [GitHub Actions](https://github.com/nampt24102004/EXE201_CleanMarket/actions) và chỉ xác nhận phát hành hoàn tất khi workflow `Deploy production` có màu xanh.
+6. Kiểm tra nhanh [website production](https://cleanmarket.io.vn) sau khi pipeline hoàn tất.
+
+Không chạy deploy lần thứ hai khi workflow trước vẫn đang thực hiện. Pipeline đã được cấu hình chạy tuần tự để tránh hai commit cùng cập nhật production.
+
+### Thay đổi database production
+
+Flyway tự động áp dụng migration khi revision backend mới khởi động. Khi thay đổi entity hoặc schema:
+
+1. Tạo **migration mới** trong `backend/src/main/resources/db/migration` theo định dạng `V<version>__<mo_ta>.sql`, ví dụ `V20261017__add_order_note.sql`.
+2. Đồng bộ một bản của file vào `database/migrations` để lịch sử database trong repository dễ tra cứu.
+3. Viết migration theo hướng tiến tới, giữ được dữ liệu hiện có và kiểm tra trên MySQL local trước khi merge.
+4. Không sửa, đổi tên hoặc xóa migration đã từng chạy trên production. Nếu cần sửa lỗi, hãy tạo một migration có version mới; nếu sửa file cũ, Flyway sẽ báo checksum không khớp và backend mới không thể khởi động.
+5. Không bật `JPA_DDL_AUTO=update` hoặc chạy `cleanmarket_full_data.sql` trên production. Production dùng `JPA_DDL_AUTO=validate`; Flyway là cơ chế duy nhất để thay đổi schema.
+
+Nếu migration hoặc backend mới không khởi động được, Cloud Run không chuyển traffic sang revision lỗi và phiên bản production đang hoạt động vẫn tiếp tục phục vụ. Hãy xem log của bước `Deploy backend to Cloud Run`, sửa bằng migration/commit mới rồi merge lại; không chỉnh trực tiếp database production nếu chưa thống nhất với người quản trị dự án.
+
+### Khi pipeline thất bại
+
+- `Test backend`: sửa test hoặc lỗi compile; không bỏ qua test để deploy.
+- `Test and build frontend`: sửa lỗi lint/build và kiểm tra `frontend/package-lock.json` đã được commit.
+- `Push backend container` hoặc `Deploy backend to Cloud Run`: kiểm tra log GitHub Actions và Cloud Run; báo người quản trị nếu lỗi liên quan IAM hoặc Secret Manager.
+- `Deploy frontend to Firebase Hosting`: kiểm tra log Firebase trong workflow, không deploy thủ công đè lên bản production.
+- `Smoke test production`: kiểm tra trạng thái Cloud Run, Firebase Hosting và endpoint `/api/products?page=0&size=1` trước khi chạy lại.
+
+Người có quyền Actions có thể chạy lại workflow bằng `Actions` → `Deploy production` → `Run workflow`, chọn nhánh `main`. Không chạy workflow từ branch tính năng vì danh tính Google Cloud chỉ cho phép deploy từ `main`.
 
 Chi tiết cấu hình backend và API được trình bày trong [`backend/README.md`](backend/README.md).
 
