@@ -131,6 +131,34 @@ export default function AdminOrdersView() {
     }
   }
 
+  // A paid order that has not finished yet can be confirmed as delivered for every farm at once.
+  const canConfirmDelivered = (detail) =>
+    !!detail?.order &&
+    !['DELIVERED', 'CANCELLED'].includes(detail.order.status) &&
+    (detail.payments || []).some((p) => p.status === 'PAID')
+
+  const [delivering, setDelivering] = useState(false)
+  const handleConfirmDelivered = async () => {
+    const { id, orderCode } = selectedOrderDetail.order
+    const note = window.prompt(
+      `Duyệt giao hàng thành công cho toàn bộ đơn #${orderCode}?\nKhách hàng và các nhà vườn sẽ nhận thông báo. Ghi chú (không bắt buộc):`,
+      '',
+    )
+    if (note === null) return
+    setDelivering(true)
+    setDetailModalError('')
+    try {
+      await api.put(`/api/manager/orders/${id}/delivered`, { note: note.trim() || null })
+      setNotice(`Đã duyệt giao hàng thành công cho đơn #${orderCode}.`)
+      await handleOpenDetail(id)
+      await loadOrders()
+    } catch (err) {
+      setDetailModalError(err.message || 'Không thể duyệt giao hàng.')
+    } finally {
+      setDelivering(false)
+    }
+  }
+
   // Execute Cancel Order
   const handleExecuteCancel = async () => {
     if (!cancelReason.trim()) {
@@ -1065,6 +1093,12 @@ export default function AdminOrdersView() {
                   Hủy đơn hàng này
                 </Button>
               )}
+            {canConfirmDelivered(selectedOrderDetail) && (
+              <Button variant="success" size="sm" className="ms-2" disabled={delivering} onClick={handleConfirmDelivered}>
+                {delivering ? <Spinner animation="border" size="sm" className="me-1" /> : <CheckCircle2 size={14} className="me-1" />}
+                Duyệt giao hàng thành công
+              </Button>
+            )}
           </div>
 
           <Button
