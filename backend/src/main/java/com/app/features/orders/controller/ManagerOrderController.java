@@ -3,6 +3,7 @@ package com.app.features.orders.controller;
 import com.app.common.ApiResponse;
 import com.app.common.PageResult;
 import com.app.features.orders.dto.ManagerOrderDto.CancelRequest;
+import com.app.features.orders.dto.ManagerOrderDto.DeliveredRequest;
 import com.app.features.orders.dto.ManagerOrderDto.OrderDetail;
 import com.app.features.orders.dto.OrderServiceDto;
 import com.app.features.orders.service.ManagerOrderService;
@@ -24,5 +25,8 @@ public class ManagerOrderController {
         return service.list(status, paymentMethod, q, from, to, page, size);
     }
     @GetMapping("/{id}") public ApiResponse<OrderDetail> detail(@PathVariable Long id) { return service.detail(id); }
+    @PutMapping("/{id}/delivered") public ApiResponse<OrderServiceDto.OrderView> delivered(@PathVariable Long id, @Valid @RequestBody(required = false) DeliveredRequest request) {
+        return service.confirmDelivered(id, request == null ? null : request.note());
+    }
     @PutMapping("/{id}/cancel") public ApiResponse<OrderServiceDto.OrderView> cancel(@PathVariable Long id, @Valid @RequestBody CancelRequest request) { return service.cancel(id, request.reason()); }
 }

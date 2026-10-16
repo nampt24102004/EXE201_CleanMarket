@@ -90,25 +90,121 @@ a:hover {
 }
 
 /* ==========================================================================
-   Top Announcement Bar
+   Top Announcement Bar (Dynamic Themes & Eye-catching Animated Effects)
    ========================================================================== */
 .top-announcement-bar {
-  background: linear-gradient(90deg, #15803d, #16a34a 60%, #15803d);
+  background: linear-gradient(90deg, #14532d, #16a34a 50%, #15803d);
   color: #ffffff;
   font-size: 0.85rem;
-  font-weight: 600;
-  padding: 0.45rem 1rem;
-  letter-spacing: 0.02em;
+  font-weight: 500;
+  padding: 0.42rem 1rem;
+  letter-spacing: 0.015em;
+  transition: background 0.5s ease;
+  position: relative;
+  z-index: 1040;
+}
+
+.top-announcement-link {
+  color: #ffffff !important;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.top-announcement-link:hover {
+  opacity: 0.95;
+  text-decoration: underline;
 }
 
 .announcement-badge {
   background: rgba(255, 255, 255, 0.22);
-  color: #fff;
-  padding: 0.15rem 0.55rem;
+  color: #ffffff;
+  padding: 0.18rem 0.65rem;
   border-radius: var(--radius-pill);
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  margin-right: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* Banner Animation Effects */
+.badge-bounce-anim {
+  animation: bannerBounce 2.4s infinite ease-in-out;
+}
+
+@keyframes bannerBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2.5px) scale(1.04); }
+}
+
+.badge-glow-anim {
+  animation: bannerGlow 2.5s infinite alternate ease-in-out;
+}
+
+@keyframes bannerGlow {
+  from {
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+  }
+  to {
+    box-shadow: 0 0 14px rgba(254, 240, 138, 0.8), 0 0 20px rgba(255, 255, 255, 0.5);
+  }
+}
+
+.badge-fade-anim {
+  animation: bannerFade 3s infinite alternate ease-in-out;
+}
+
+@keyframes bannerFade {
+  0% { opacity: 0.82; }
+  100% { opacity: 1; }
+}
+
+.badge-pulse-soft {
+  animation: bannerPulseSoft 2s infinite ease-in-out;
+}
+
+@keyframes bannerPulseSoft {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+.badge-marquee-anim {
+  display: inline-block;
+  animation: bannerMarquee 15s linear infinite;
+}
+
+/* Mini arrow controls for banner carousel */
+.banner-nav-arrow {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #ffffff;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.banner-nav-arrow:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(1.1);
+}
+
+.spin-anim {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* ==========================================================================

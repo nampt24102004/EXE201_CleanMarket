@@ -12,6 +12,7 @@ import {
   LogOut,
   X,
   UserCheck,
+  Megaphone,
 } from 'lucide-react'
 import BrandLogo from '../../components/common/BrandLogo'
 import { useAuth } from '../../context/useAuth'
@@ -83,6 +84,7 @@ export default function StaffSidebar({
     {
       title: 'Khuyến mãi & Vận chuyển',
       items: [
+        { key: 'banners', label: 'Banner khuyến mãi sàn', icon: Megaphone },
         { key: 'vouchers', label: 'Voucher khuyến mãi sàn', icon: Tag },
         { key: 'shipping-zones', label: 'Biểu phí giao hàng', icon: Truck },
       ],

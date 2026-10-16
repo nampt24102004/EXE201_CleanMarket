@@ -12,5 +12,6 @@ public final class ManagerOrderDto {
     public record VoucherLine(String code, String scope, String discountType, BigDecimal discountAmount, Long supplierOrderId) { }
     public record HistoryLine(String status, String actorEmail, String note, Instant createdAt) { }
     public record OrderDetail(OrderServiceDto.OrderView order, Long customerId, String customerEmail, List<PaymentLine> payments, List<VoucherLine> vouchers, List<HistoryLine> history) { }
+    public record DeliveredRequest(@Size(max = 500) String note) { }
     public record CancelRequest(@NotBlank(message = "Vui lòng nhập lý do hủy") @Size(max = 500) String reason) { }
 }

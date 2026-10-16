@@ -20,6 +20,7 @@ const sectionTitles = {
   'orders': 'Quản lý toàn bộ đơn hàng sàn',
   'complaints': 'Xử lý khiếu nại khách hàng',
   'refunds': 'Quản lý hoàn tiền thủ công',
+  'banners': 'Quản lý Banner & Khuyến mãi sàn',
 }
 
 export default function AdminTopbar({

@@ -17,6 +17,7 @@ import {
   LogOut,
   X,
   Shield,
+  Megaphone,
 } from 'lucide-react'
 import BrandLogo from '../../components/common/BrandLogo'
 import { useAuth } from '../../context/useAuth'
@@ -101,6 +102,12 @@ export default function AdminSidebar({
           badge: summary?.requestedRefunds > 0 ? summary.requestedRefunds : null,
           badgeVariant: 'danger',
         },
+      ],
+    },
+    {
+      title: 'Tiếp thị & Khuyến mãi',
+      items: [
+        { key: 'banners', label: 'Banner & Khuyến mãi', icon: Megaphone },
       ],
     },
   ]

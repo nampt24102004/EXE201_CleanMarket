@@ -13,6 +13,7 @@ const sectionTitles = {
   'orders': 'Quản lý toàn bộ đơn hàng sàn',
   'complaints': 'Xử lý khiếu nại khách hàng',
   'refunds': 'Quản lý hoàn tiền thủ công',
+  'banners': 'Quản lý Banner & Khuyến mãi sàn',
   'vouchers': 'Quản lý Voucher khuyến mãi sàn',
   'shipping-zones': 'Biểu phí giao hàng theo khu vực',
 }

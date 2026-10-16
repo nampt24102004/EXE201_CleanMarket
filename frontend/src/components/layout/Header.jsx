@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Container, Dropdown, Nav, Navbar } from 'react-bootstrap'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
@@ -13,14 +14,103 @@ import {
   RotateCcw,
   LayoutDashboard,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
 } from 'lucide-react'
 import NotificationBell from '../notifications/NotificationBell'
 import BrandLogo from '../common/BrandLogo'
+import { api } from '../../services/apiClient'
+
+const DEFAULT_BANNERS = [
+  {
+    id: 'default-1',
+    badgeText: 'Ưu đãi hôm nay',
+    title: 'Miễn phí vận chuyển theo ngưỡng từng khu vực • Cam kết 100% tươi sạch chuẩn VietGAP',
+    linkUrl: '/products',
+    themeStyle: 'ORGANIC_EMERALD',
+    animationEffect: 'BOUNCE_BADGE',
+    hotline: '0358 755 719',
+  },
+  {
+    id: 'default-2',
+    badgeText: 'Freeship 15K',
+    title: 'Nhập mã CLEANFREESHIP giảm ngay 15.000đ phí giao hàng cho đơn từ 150.000đ',
+    linkUrl: '/products',
+    themeStyle: 'SUNSET_ORANGE',
+    animationEffect: 'PULSE_GLOW',
+    hotline: '0358 755 719',
+  },
+  {
+    id: 'default-3',
+    badgeText: 'Giao 2 Giờ',
+    title: 'Nông sản thu hoạch sớm trong ngày - Giao siêu tốc 2H khu vực nội thành',
+    linkUrl: '/products',
+    themeStyle: 'ROYAL_GOLD',
+    animationEffect: 'SLIDE_HORIZONTAL',
+    hotline: '0358 755 719',
+  },
+]
+
+const THEME_GRADIENTS = {
+  ORGANIC_EMERALD: 'linear-gradient(90deg, #14532d, #16a34a 50%, #15803d)',
+  SUNSET_ORANGE: 'linear-gradient(90deg, #9a3412, #ea580c 50%, #c2410c)',
+  ROYAL_GOLD: 'linear-gradient(90deg, #713f12, #ca8a04 50%, #854d0e)',
+  OCEAN_BLUE: 'linear-gradient(90deg, #1e3a8a, #2563eb 50%, #1d4ed8)',
+  NEON_FOREST: 'linear-gradient(90deg, #064e3b, #059669 40%, #10b981 70%, #064e3b)',
+}
+
+const EFFECT_CLASSES = {
+  BOUNCE_BADGE: 'badge-bounce-anim',
+  PULSE_GLOW: 'badge-glow-anim',
+  FADE: 'badge-fade-anim',
+  SLIDE_HORIZONTAL: 'badge-pulse-soft',
+  MARQUEE: 'badge-marquee-anim',
+}
 
 function Header({ cartCount }) {
   const { user, hasRole, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Dynamic Banners State
+  const [banners, setBanners] = useState(DEFAULT_BANNERS)
+  const [bannerIndex, setBannerIndex] = useState(0)
+  const [isBannerHovered, setIsBannerHovered] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+    const fetchBanners = async () => {
+      try {
+        const res = await api.get('/api/public/banners?position=TOP_BAR')
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          setBanners(res)
+        }
+      } catch {
+        // Fallback to default banners
+      }
+    }
+    void fetchBanners()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  // Auto-cycle banner every 5.5 seconds
+  useEffect(() => {
+    if (banners.length <= 1 || isBannerHovered) return undefined
+    const interval = setInterval(() => {
+      setBannerIndex((prev) => (prev + 1) % banners.length)
+    }, 5500)
+    return () => clearInterval(interval)
+  }, [banners.length, isBannerHovered])
+
+  const currentBanner = banners[bannerIndex] || banners[0] || DEFAULT_BANNERS[0]
+  const bannerGradient =
+    THEME_GRADIENTS[currentBanner.themeStyle] ||
+    currentBanner.bgColor ||
+    THEME_GRADIENTS.ORGANIC_EMERALD
+  const effectClass = EFFECT_CLASSES[currentBanner.animationEffect] || 'badge-pulse-soft'
 
   const dashboard = hasRole('ADMIN')
     ? '/admin'
@@ -36,20 +126,75 @@ function Header({ cartCount }) {
 
   return (
     <>
-      {/* Top Announcement Bar */}
-      <div className="top-announcement-bar d-none d-md-block">
+      {/* Top Announcement Bar (Dynamic & Eye-catching) */}
+      <div
+        className="top-announcement-bar d-none d-md-block"
+        style={{ background: bannerGradient }}
+        onMouseEnter={() => setIsBannerHovered(true)}
+        onMouseLeave={() => setIsBannerHovered(false)}
+      >
         <Container fluid="xxl" className="px-3 px-xl-4 d-flex justify-content-between align-items-center">
-          <div className="d-flex align-items-center gap-2">
-            <span className="announcement-badge">
-              <Sparkles size={12} className="me-1 inline-block" />
-              Ưu đãi hôm nay
-            </span>
-            <span>Miễn phí vận chuyển theo ngưỡng từng khu vực • Cam kết 100% tươi sạch chuẩn VietGAP</span>
+          <div className="d-flex align-items-center gap-2 overflow-hidden text-truncate pe-3">
+            {banners.length > 1 && (
+              <div className="d-flex align-items-center gap-1 me-1">
+                <button
+                  type="button"
+                  className="banner-nav-arrow"
+                  onClick={() =>
+                    setBannerIndex((prev) => (prev > 0 ? prev - 1 : banners.length - 1))
+                  }
+                  title="Ưu đãi trước"
+                  aria-label="Previous banner"
+                >
+                  <ChevronLeft size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="banner-nav-arrow"
+                  onClick={() =>
+                    setBannerIndex((prev) => (prev + 1) % banners.length)
+                  }
+                  title="Ưu đãi tiếp theo"
+                  aria-label="Next banner"
+                >
+                  <ChevronRight size={13} />
+                </button>
+              </div>
+            )}
+
+            {currentBanner.badgeText && (
+              <span className={`announcement-badge ${effectClass}`}>
+                <Sparkles size={12} className="me-1 inline-block text-warning" />
+                {currentBanner.badgeText}
+              </span>
+            )}
+
+            {currentBanner.linkUrl ? (
+              <Link
+                to={currentBanner.linkUrl}
+                className="top-announcement-link text-truncate"
+                title={currentBanner.title}
+              >
+                <span className="text-truncate">{currentBanner.title}</span>
+                <ExternalLink size={12} className="opacity-75 flex-shrink-0" />
+              </Link>
+            ) : (
+              <span className="text-truncate">{currentBanner.title}</span>
+            )}
           </div>
-          <div className="d-flex align-items-center gap-3 text-white-50 small">
-            <span className="d-flex align-items-center gap-1 text-white">
-              <PhoneCall size={13} /> Hotline: <strong>0358 755 719</strong>
-            </span>
+
+          <div className="d-flex align-items-center gap-3 text-white-50 small flex-shrink-0">
+            {currentBanner.hotline && (
+              <a
+                href={`tel:${currentBanner.hotline.replace(/\s+/g, '')}`}
+                className="d-flex align-items-center gap-1 text-white text-decoration-none"
+              >
+                <PhoneCall size={13} className="text-warning" />
+                <span>
+                  Hotline: <strong>{currentBanner.hotline}</strong>
+                </span>
+              </a>
+            )}
             <span>|</span>
             <span className="d-flex align-items-center gap-1 text-white">
               <ShieldCheck size={14} className="text-warning" /> Truy xuất QR từng lô hàng

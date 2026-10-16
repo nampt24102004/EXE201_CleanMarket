@@ -10,6 +10,7 @@ import StaffShippingView from './views/StaffShippingView'
 import AdminOperationsView from '../admin/views/AdminOperationsView'
 import AdminProductsView from '../admin/views/AdminProductsView'
 import AdminOrdersView from '../admin/views/AdminOrdersView'
+import AdminBannersView from '../admin/views/AdminBannersView'
 import { api } from '../../services/apiClient'
 import '../admin/admin.css'
 
@@ -102,6 +103,8 @@ export default function StaffPage({ onCatalogChanged }) {
         onCatalogChanged={onCatalogChanged}
       />
     )
+  } else if (section === 'banners') {
+    mainView = <AdminBannersView base="/manager" />
   } else if (section === 'vouchers') {
     mainView = <StaffVouchersView />
   } else if (section === 'shipping-zones') {

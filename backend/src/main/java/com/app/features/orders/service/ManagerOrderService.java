@@ -10,4 +10,5 @@ public interface ManagerOrderService {
     ApiResponse<PageResult<OrderServiceDto.OrderView>> list(String status, String paymentMethod, String q, LocalDate from, LocalDate to, Integer page, Integer size);
     ApiResponse<OrderDetail> detail(Long id);
     ApiResponse<OrderServiceDto.OrderView> cancel(Long id, String reason);
+    ApiResponse<OrderServiceDto.OrderView> confirmDelivered(Long id, String note);
 }
