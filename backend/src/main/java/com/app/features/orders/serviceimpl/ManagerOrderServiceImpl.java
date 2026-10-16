@@ -70,29 +70,31 @@ import org.springframework.transaction.annotation.Transactional;
     }
 
     /**
-     * Staff confirm that a paid order reached the customer, for every farm in it at once
-     * (for example when a farm delivered but never updated its part). Customer and farms are told.
+     * Staff confirm that an order reached the customer, for every farm in it at once
+     * (for example when a farm delivered but never updated its part). Online orders must already be paid;
+     * for COD the money was collected on delivery, so its payment becomes PAID too. Customer and farms are told.
      */
     @Transactional
     public ApiResponse<OrderServiceDto.OrderView> confirmDelivered(Long id, String note) {
         MarketOrder order = orders.lockById(id).orElseThrow(() -> BusinessException.missing("Đơn hàng"));
         if (List.of("DELIVERED", "CANCELLED").contains(order.getStatus())) throw BusinessException.conflict("ORDER_NOT_DELIVERABLE", "Đơn hàng đã giao xong hoặc đã hủy");
-        if (!payments.existsByOrderIdAndStatus(id, "PAID")) throw BusinessException.bad("PAYMENT_NOT_PAID", "Chỉ duyệt giao hàng thành công cho đơn đã thanh toán");
+        if (!"COD".equals(order.getPaymentMethod()) && !payments.existsByOrderIdAndStatus(id, "PAID"))
+            throw BusinessException.bad("PAYMENT_NOT_PAID", "Đơn thanh toán trực tuyến phải được thanh toán trước khi duyệt giao hàng");
         deliver(order, current.get(), reasonFor(note));
         return ApiResponse.ok(service.view(order));
     }
 
     @Transactional(readOnly = true)
     public ApiResponse<List<AwaitingDelivery>> awaitingDelivery() {
-        return ApiResponse.ok(orders.findPaidAwaitingDelivery().stream()
-            .map(o -> new AwaitingDelivery(o.getId(), o.getOrderCode(), o.getStatus(), o.getTotalAmount(), o.getCreatedAt())).toList());
+        return ApiResponse.ok(orders.findAwaitingDelivery().stream()
+            .map(o -> new AwaitingDelivery(o.getId(), o.getOrderCode(), o.getStatus(), o.getPaymentMethod(), o.getTotalAmount(), o.getCreatedAt())).toList());
     }
 
-    /** Confirms every paid order still waiting, in one go; each one is handled exactly like a single confirmation. */
+    /** Confirms every COD or paid order still waiting, in one go; each one is handled exactly like a single confirmation. */
     @Transactional
     public ApiResponse<BulkDeliveredResult> confirmAllDelivered(String note) {
         UserAccount staff = current.get(); String reason = reasonFor(note); List<String> codes = new ArrayList<>();
-        for (MarketOrder candidate : orders.findPaidAwaitingDelivery()) {
+        for (MarketOrder candidate : orders.findAwaitingDelivery()) {
             MarketOrder order = orders.lockById(candidate.getId()).orElseThrow();
             if (List.of("DELIVERED", "CANCELLED").contains(order.getStatus())) continue;
             deliver(order, staff, reason); codes.add(order.getOrderCode());
@@ -112,6 +114,12 @@ import org.springframework.transaction.annotation.Transactional;
             notifications.notify(part.getSupplier().getOwner(), NotificationType.ORDER, "Đơn " + order.getOrderCode() + " đã giao thành công",
                 "CleanMarket đã xác nhận phần đơn của " + part.getSupplier().getName() + " được giao thành công cho khách hàng.", "/partner/orders");
         }
+        // COD money is collected at the door, so a confirmed delivery also settles the payment.
+        if ("COD".equals(order.getPaymentMethod()))
+            payments.findByOrderIdOrderByCreatedAtDesc(id).stream().filter(p -> !"PAID".equals(p.getStatus())).findFirst().ifPresent(p -> {
+                p.setStatus("PAID"); p.setPaidAt(java.time.Instant.now());
+                audit.record(staff, "PAYMENT_COD_COLLECTED_BY_STAFF", "Payment", p.getId(), order.getOrderCode());
+            });
         order.setStatus("DELIVERED");
         statusHistory.record(order, "DELIVERED", staff, reason);
         buyerNotifier.statusChanged(order, "DELIVERED");

@@ -213,33 +213,43 @@ class AdminApiTest {
             .andExpect(jsonPath("$.data.total").value(1));
     }
 
-    @Test void managerApprovesEveryPaidOrderAtOnce() throws Exception {
+    @Test void managerApprovesEveryPaidAndCodOrderAtOnce() throws Exception {
         Product carrot = seedProduct();
         account("buyer5-" + tag, "USER");
         MockHttpSession buyer = login("buyer5-" + tag);
         java.util.List<String> codes = new java.util.ArrayList<>();
-        for (int i = 0; i < 3; i++) {
+        String[] methods = {"PAYOS", "PAYOS", "PAYOS", "COD"};
+        for (int i = 0; i < methods.length; i++) {
             mvc.perform(post("/api/cart/items").with(csrf()).session(buyer).contentType(MediaType.APPLICATION_JSON).content("{\"productId\":" + carrot.getId() + ",\"quantity\":1}")).andExpect(status().isOk());
             JsonNode order = body(mvc.perform(post("/api/orders/checkout").with(csrf()).session(buyer).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"fullName\":\"Buyer\",\"phone\":\"0912345678\",\"address\":\"Hanoi\",\"paymentMethod\":\"PAYOS\"}")).andExpect(status().isOk()));
+                .content("{\"fullName\":\"Buyer\",\"phone\":\"0912345678\",\"address\":\"Hanoi\",\"paymentMethod\":\"" + methods[i] + "\"}")).andExpect(status().isOk()));
             codes.add(order.path("data").path("orderCode").asText());
-            // The first two are paid; the third never is and must be left alone.
+            // The first two payOS orders are paid; the third never is and must be left alone. The COD one is collected on delivery.
             if (i < 2) paymentRepository.findByOrderIdOrderByCreatedAtDesc(order.path("data").path("id").asLong()).forEach(p -> { p.setStatus("PAID"); paymentRepository.save(p); });
         }
         account("manager2-" + tag, "MANAGER");
         MockHttpSession manager = login("manager2-" + tag);
         mvc.perform(get("/api/manager/orders/awaiting-delivery").session(admin)).andExpect(status().isForbidden());
         mvc.perform(get("/api/manager/orders/awaiting-delivery").session(manager)).andExpect(status().isOk())
-            .andExpect(jsonPath("$.data[*].orderCode").value(org.hamcrest.Matchers.hasItems(codes.get(0), codes.get(1))))
+            .andExpect(jsonPath("$.data[*].orderCode").value(org.hamcrest.Matchers.hasItems(codes.get(0), codes.get(1), codes.get(3))))
             .andExpect(jsonPath("$.data[*].orderCode").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem(codes.get(2)))));
 
         put(manager, "/api/manager/orders/delivered", "{}").andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.orderCodes").value(org.hamcrest.Matchers.hasItems(codes.get(0), codes.get(1))));
+            .andExpect(jsonPath("$.data.orderCodes").value(org.hamcrest.Matchers.hasItems(codes.get(0), codes.get(1), codes.get(3))));
+        // Delivering a COD order means its money was collected.
+        mvc.perform(get("/api/manager/orders").param("q", codes.get(3)).session(manager)).andExpect(jsonPath("$.data.items[0].status").value("DELIVERED"));
+        assertEquals("PAID", jdbcPaymentStatus(codes.get(3)));
         mvc.perform(get("/api/manager/orders").param("q", codes.get(0)).session(manager)).andExpect(jsonPath("$.data.items[0].status").value("DELIVERED"));
         mvc.perform(get("/api/manager/orders").param("q", codes.get(2)).session(manager)).andExpect(jsonPath("$.data.items[0].status").value("PENDING_PAYMENT"));
         mvc.perform(get("/api/manager/orders/awaiting-delivery").session(manager)).andExpect(jsonPath("$.data.length()").value(0));
         var titles = mvc.perform(get("/api/notifications").session(buyer)).andReturn().getResponse().getContentAsString();
         assertTrue(titles.contains(codes.get(0) + " đã giao thành công") && titles.contains(codes.get(1) + " đã giao thành công"), titles);
+    }
+
+    @Autowired com.app.features.orders.repository.OrderRepository orderRepository;
+    private String jdbcPaymentStatus(String orderCode) {
+        long id = orderRepository.findByOrderCode(orderCode).orElseThrow().getId();
+        return paymentRepository.findByOrderIdOrderByCreatedAtDesc(id).get(0).getStatus();
     }
 
     @Test void dashboardAndReportsRespond() throws Exception {

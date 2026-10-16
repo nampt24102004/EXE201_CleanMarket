@@ -131,9 +131,14 @@ export default function AdminOrdersView() {
   }, [loadAwaitingDelivery])
 
   const handleConfirmAllDelivered = async () => {
-    const codes = awaitingDelivery.map((o) => `#${o.orderCode}`)
+    const codes = awaitingDelivery.map((o) => `#${o.orderCode}${o.paymentMethod === 'COD' ? ' (COD)' : ''}`)
     const preview = codes.slice(0, 10).join(', ') + (codes.length > 10 ? `, … (+${codes.length - 10})` : '')
-    if (!window.confirm(`Duyệt giao hàng thành công cho ${codes.length} đơn đã thanh toán?\n${preview}\n\nKhách hàng và các nhà vườn của từng đơn sẽ nhận thông báo.`)) return
+    const codCount = awaitingDelivery.filter((o) => o.paymentMethod === 'COD').length
+    if (!window.confirm(
+      `Duyệt giao hàng thành công cho ${codes.length} đơn?\n${preview}\n\n` +
+      (codCount ? `${codCount} đơn COD sẽ được ghi nhận đã thu tiền (thanh toán: Đã thanh toán).\n` : '') +
+      'Khách hàng và các nhà vườn của từng đơn sẽ nhận thông báo.',
+    )) return
     setBulkDelivering(true)
     setError('')
     setNotice('')
@@ -168,18 +173,19 @@ export default function AdminOrdersView() {
     }
   }
 
-  // A manager can confirm a paid, unfinished order as delivered for every farm at once.
+  // A manager can confirm an unfinished COD order, or a paid online one, as delivered for every farm at once.
   const canConfirmDelivered = (detail) =>
     hasRole('MANAGER') &&
     !!detail?.order &&
     !['DELIVERED', 'CANCELLED'].includes(detail.order.status) &&
-    (detail.payments || []).some((p) => p.status === 'PAID')
+    (detail.order.paymentMethod === 'COD' || (detail.payments || []).some((p) => p.status === 'PAID'))
 
   const [delivering, setDelivering] = useState(false)
   const handleConfirmDelivered = async () => {
-    const { id, orderCode } = selectedOrderDetail.order
+    const { id, orderCode, paymentMethod } = selectedOrderDetail.order
+    const codNote = paymentMethod === 'COD' ? '\nĐơn COD sẽ được ghi nhận đã thu tiền (Đã thanh toán).' : ''
     const note = window.prompt(
-      `Duyệt giao hàng thành công cho toàn bộ đơn #${orderCode}?\nKhách hàng và các nhà vườn sẽ nhận thông báo. Ghi chú (không bắt buộc):`,
+      `Duyệt giao hàng thành công cho toàn bộ đơn #${orderCode}?${codNote}\nKhách hàng và các nhà vườn sẽ nhận thông báo. Ghi chú (không bắt buộc):`,
       '',
     )
     if (note === null) return
@@ -314,10 +320,10 @@ export default function AdminOrdersView() {
               className="d-flex align-items-center gap-2 px-3 py-2 rounded-3 shadow-sm"
               onClick={handleConfirmAllDelivered}
               disabled={bulkDelivering || awaitingDelivery.length === 0}
-              title="Duyệt giao hàng thành công cho mọi đơn đã thanh toán đang chờ"
+              title="Duyệt giao hàng thành công cho mọi đơn COD và đơn đã thanh toán đang chờ"
             >
               {bulkDelivering ? <Spinner animation="border" size="sm" /> : <CheckCircle2 size={15} />}
-              <span className="fw-semibold">Duyệt tất cả ({awaitingDelivery.length} đơn đã thanh toán)</span>
+              <span className="fw-semibold">Duyệt tất cả ({awaitingDelivery.length} đơn chờ giao)</span>
             </Button>
           )}
           <Button
