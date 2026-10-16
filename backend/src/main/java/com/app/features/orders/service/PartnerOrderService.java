@@ -6,6 +6,6 @@ import com.app.features.orders.dto.PartnerOrderControllerDto.StatusRequest;
 import java.util.*;
 
 public interface PartnerOrderService {
-    public ApiResponse<List<PartView>> mine();
+    public ApiResponse<List<PartView>> mine(boolean includeUnpaid);
     public ApiResponse<PartView> update(Long id, StatusRequest request);
 }

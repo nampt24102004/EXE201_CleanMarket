@@ -11,6 +11,8 @@ import AdminCategoriesView from './views/AdminCategoriesView'
 import AdminSettingsView from './views/AdminSettingsView'
 import AdminAuditView from './views/AdminAuditView'
 import AdminOperationsView from './views/AdminOperationsView'
+import AdminProductsView from './views/AdminProductsView'
+import AdminOrdersView from './views/AdminOrdersView'
 import { api } from '../../services/apiClient'
 import './admin.css'
 
@@ -64,8 +66,17 @@ export default function AdminPage({ onCatalogChanged }) {
     mainView = <AdminSettingsView />
   } else if (section === 'audit-logs') {
     mainView = <AdminAuditView />
+  } else if (section === 'products') {
+    mainView = (
+      <AdminProductsView
+        onCatalogChanged={onCatalogChanged}
+        base="/admin"
+      />
+    )
+  } else if (section === 'orders') {
+    mainView = <AdminOrdersView />
   } else if (
-    ['suppliers', 'products', 'orders', 'complaints', 'refunds'].includes(section)
+    ['suppliers', 'complaints', 'refunds'].includes(section)
   ) {
     mainView = (
       <AdminOperationsView

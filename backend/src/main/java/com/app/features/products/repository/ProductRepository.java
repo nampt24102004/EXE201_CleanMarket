@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
-    @Query("select p from Product p join fetch p.supplier s join fetch p.category c where p.approvalStatus = 'APPROVED' and p.status = 'ACTIVE' and s.status = 'APPROVED'")
+    @Query("select p from Product p join fetch p.supplier s join fetch p.category c where p.approvalStatus = 'APPROVED' and p.status = 'ACTIVE' and s.status = 'APPROVED' and c.active = true")
     List<Product> findPublic();
     List<Product> findBySupplierId(Long supplierId);
     List<Product> findByApprovalStatus(String status);

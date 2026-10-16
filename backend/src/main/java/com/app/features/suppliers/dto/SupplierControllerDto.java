@@ -26,7 +26,7 @@ public final class SupplierControllerDto {
         String description
     ) {}
     public record DocumentView(Long id, String documentType, String documentName, String originalFileName,
-        String fileUrl, String status, String rejectionReason, Instant uploadedAt) {}
+        String fileUrl, String status, String rejectionReason, Instant uploadedAt, java.time.LocalDate expiryDate) {}
     public record SupplierView(Long id, String name, String location, String description, String documentUrl,
         String status, Long ownerId, String applicantName, String email, String phone, String supplierType,
         String rejectionReason, Long reviewedBy, Instant reviewedAt, Instant createdAt, List<DocumentView> documents) {}

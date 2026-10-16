@@ -11,7 +11,10 @@ import com.app.features.suppliers.entity.*;
 import com.app.features.suppliers.enums.SupplierDocumentStatus;
 import com.app.features.suppliers.repository.*;
 import com.app.features.suppliers.service.SupplierService;
+import com.app.features.notifications.enums.NotificationType;
+import com.app.features.notifications.service.NotificationService;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -31,12 +34,13 @@ public class SupplierServiceImpl implements SupplierService {
     private final RoleRepository roles;
     private final UserRoleAssignmentRepository userRoles;
     private final int maxFiles;
+    private final NotificationService notifications;
 
     public SupplierServiceImpl(SupplierRepository suppliers, SupplierDocumentRepository documents, CurrentUser current,
             AuditService audit, StorageService storage, RoleRepository roles, UserRoleAssignmentRepository userRoles,
-            @Value("${app.upload.max-files:8}") int maxFiles) {
+            @Value("${app.upload.max-files:8}") int maxFiles, NotificationService notifications) {
         this.suppliers=suppliers; this.documents=documents; this.current=current; this.audit=audit;
-        this.storage=storage; this.roles=roles; this.userRoles=userRoles; this.maxFiles=maxFiles;
+        this.storage=storage; this.roles=roles; this.userRoles=userRoles; this.maxFiles=maxFiles; this.notifications=notifications;
     }
 
     @Override @Transactional public ApiResponse<SupplierView> apply(ApplicationRequest request) {
@@ -69,23 +73,36 @@ public class SupplierServiceImpl implements SupplierService {
         return ApiResponse.ok(view(s));
     }
 
-    @Override @Transactional public ApiResponse<DocumentView> uploadDocument(String type, String documentName, MultipartFile file) {
+    @Override @Transactional public ApiResponse<DocumentView> uploadDocument(String type, String documentName, LocalDate expiryDate, MultipartFile file) {
         Supplier s=owned();
         if (!Set.of("PENDING","REJECTED").contains(s.getStatus())) throw BusinessException.conflict("INVALID_SUPPLIER_STATUS","Không thể bổ sung giấy tờ ở trạng thái hiện tại");
-        return storeDocument(s,type,documentName,file);
+        return storeDocument(s,type,documentName,expiryDate,file);
     }
 
-    @Override @Transactional public ApiResponse<DocumentView> uploadPartnerDocument(String type, String documentName, MultipartFile file) {
+    @Override @Transactional public ApiResponse<DocumentView> uploadPartnerDocument(String type, String documentName, LocalDate expiryDate, MultipartFile file) {
         Supplier s=owned();
         if (!"APPROVED".equals(s.getStatus())) throw BusinessException.bad("NOT_APPROVED_PARTNER","Nhà cung cấp chưa được phê duyệt");
-        return storeDocument(s,type,documentName,file);
+        return storeDocument(s,type,documentName,expiryDate,file);
     }
 
-    private ApiResponse<DocumentView> storeDocument(Supplier s, String type, String documentName, MultipartFile file) {
+    /** Owners may withdraw a document that is not (or no longer) accepted; approved documents stay as the review record. */
+    @Override @Transactional public ApiResponse<SupplierView> deleteDocument(Long documentId) {
+        Supplier s=owned(); SupplierDocument d=findDocument(s.getId(),documentId);
+        if (d.getStatus()==SupplierDocumentStatus.APPROVED && !d.expiredOn(today())) throw BusinessException.conflict("DOCUMENT_APPROVED","Không thể xóa giấy tờ đã được duyệt");
+        if ("SUSPENDED".equals(s.getStatus())) throw BusinessException.conflict("INVALID_SUPPLIER_STATUS","Nhà cung cấp đang bị tạm dừng");
+        documents.delete(d); storage.delete(d.getObjectKey());
+        audit.record(current.get(),"SUPPLIER_DOCUMENT_DELETED","SupplierDocument",documentId,d.getType());
+        return ApiResponse.ok(view(s));
+    }
+
+    private ApiResponse<DocumentView> storeDocument(Supplier s, String type, String documentName, LocalDate expiryDate, MultipartFile file) {
         String normalized=normalize(type); if (!DOCUMENT_TYPES.contains(normalized)) throw BusinessException.bad("INVALID_DOCUMENT","Loại giấy tờ không hợp lệ");
-        if (documents.findBySupplierId(s.getId()).size() >= maxFiles) throw BusinessException.bad("INVALID_DOCUMENT","Đã vượt quá số lượng file cho phép");
+        if (expiryDate!=null && expiryDate.isBefore(LocalDate.now(DateRange.ZONE))) throw BusinessException.bad("DOCUMENT_EXPIRED","Giấy tờ đã hết hạn, vui lòng tải bản còn hiệu lực");
+        // Rejected and expired files do not count toward the limit, so a supplier can always upload a replacement.
+        long active=documents.findBySupplierId(s.getId()).stream().filter(d->d.getStatus()!=SupplierDocumentStatus.REJECTED && !d.expiredOn(today())).count();
+        if (active >= maxFiles) throw BusinessException.bad("INVALID_DOCUMENT","Đã vượt quá số lượng file cho phép");
         var stored=storage.upload(file,"suppliers/"+s.getId(),FILE_EXTENSIONS);
-        SupplierDocument d=new SupplierDocument(); d.setSupplier(s); d.setType(normalized);
+        SupplierDocument d=new SupplierDocument(); d.setSupplier(s); d.setType(normalized); d.setExpiryDate(expiryDate);
         d.setDocumentName(blank(documentName) ? normalized : documentName.trim()); d.setOriginalFileName(stored.originalFileName());
         d.setObjectKey(stored.objectKey()); d.setFileUrl(stored.fileUrl()); d.setUploadedAt(Instant.now()); documents.save(d);
         audit.record(current.get(),"SUPPLIER_DOCUMENT_UPLOADED","SupplierDocument",d.getId(),normalized);
@@ -95,7 +112,10 @@ public class SupplierServiceImpl implements SupplierService {
     @Override @Transactional public ApiResponse<SupplierView> resubmit() {
         Supplier s=owned();
         if (!"REJECTED".equals(s.getStatus())) throw BusinessException.conflict("INVALID_SUPPLIER_STATUS","Chỉ hồ sơ bị từ chối mới có thể gửi lại");
-        if (documents.findBySupplierId(s.getId()).isEmpty() && blank(s.getDocumentUrl())) throw BusinessException.bad("INVALID_DOCUMENT","Vui lòng tải ít nhất một giấy tờ");
+        List<SupplierDocument> docs=documents.findBySupplierId(s.getId());
+        if (docs.stream().anyMatch(d->d.getStatus()==SupplierDocumentStatus.REJECTED||d.expiredOn(today())))
+            throw BusinessException.bad("DOCUMENT_REJECTED","Vui lòng xóa hoặc thay thế giấy tờ bị từ chối/hết hạn trước khi gửi lại");
+        if (docs.isEmpty() && blank(s.getDocumentUrl())) throw BusinessException.bad("INVALID_DOCUMENT","Vui lòng tải ít nhất một giấy tờ");
         s.setStatus("PENDING"); s.setRejectionReason(null); s.setReviewedAt(null); s.setReviewedBy(null); suppliers.save(s);
         audit.record(current.get(),"SUPPLIER_RESUBMITTED","Supplier",s.getId(),null); return ApiResponse.ok(view(s));
     }
@@ -108,41 +128,73 @@ public class SupplierServiceImpl implements SupplierService {
 
     @Override @Transactional public ApiResponse<SupplierView> approve(Long id) {
         Supplier s=findPending(id);
-        if (documents.findBySupplierId(id).isEmpty() && blank(s.getDocumentUrl())) throw BusinessException.bad("INVALID_DOCUMENT","Hồ sơ chưa có giấy tờ");
+        List<SupplierDocument> docs=documents.findBySupplierId(id);
+        if (docs.isEmpty() && blank(s.getDocumentUrl())) throw BusinessException.bad("INVALID_DOCUMENT","Hồ sơ chưa có giấy tờ");
+        // A document the reviewer rejected (or that expired) must be withdrawn or replaced first; approving the profile never overrides that decision.
+        if (docs.stream().anyMatch(d->d.getStatus()==SupplierDocumentStatus.REJECTED||d.expiredOn(today())))
+            throw BusinessException.conflict("DOCUMENT_REJECTED","Hồ sơ còn giấy tờ bị từ chối hoặc hết hạn; hãy từ chối hồ sơ để nhà cung cấp thay thế");
         UserAccount reviewer=current.get(); s.setStatus("APPROVED"); s.setRejectionReason(null); s.setReviewedBy(reviewer); s.setReviewedAt(Instant.now());
-        documents.findBySupplierId(id).forEach(d->{ d.setStatus(SupplierDocumentStatus.APPROVED); d.setReviewedBy(reviewer); d.setReviewedAt(Instant.now()); });
+        docs.stream().filter(d->d.getStatus()==SupplierDocumentStatus.PENDING).forEach(d->{ d.setStatus(SupplierDocumentStatus.APPROVED); d.setReviewedBy(reviewer); d.setReviewedAt(Instant.now()); });
         grantPartner(s.getOwner()); suppliers.save(s); audit.record(reviewer,"SUPPLIER_APPROVED","Supplier",id,null);
+        notifications.notify(s.getOwner(), NotificationType.SUPPLIER, "Hồ sơ nhà cung cấp đã được duyệt",
+            "Hồ sơ \"" + s.getName() + "\" đã được phê duyệt. Bạn có thể bắt đầu đăng sản phẩm trên CleanMarket.", "/partner");
         return ApiResponse.ok(view(s));
     }
 
     @Override @Transactional public ApiResponse<SupplierView> reject(Long id, DecisionRequest request) {
         Supplier s=findPending(id); UserAccount reviewer=current.get(); s.setStatus("REJECTED"); s.setRejectionReason(request.reason().trim());
         s.setReviewedBy(reviewer); s.setReviewedAt(Instant.now()); suppliers.save(s);
-        audit.record(reviewer,"SUPPLIER_REJECTED","Supplier",id,request.reason()); return ApiResponse.ok(view(s));
+        audit.record(reviewer,"SUPPLIER_REJECTED","Supplier",id,request.reason());
+        notifications.notify(s.getOwner(), NotificationType.SUPPLIER, "Hồ sơ nhà cung cấp bị từ chối",
+            "Hồ sơ \"" + s.getName() + "\" chưa được duyệt. Lý do: " + request.reason().trim() + "\nVui lòng chỉnh sửa, bổ sung giấy tờ và gửi lại.", "/partner/register");
+        return ApiResponse.ok(view(s));
     }
 
     @Override @Transactional public ApiResponse<SupplierView> suspend(Long id, DecisionRequest request) {
         Supplier s=find(id); if (!"APPROVED".equals(s.getStatus())) throw BusinessException.conflict("SUPPLIER_NOT_ACTIVE","Chỉ tạm dừng được nhà cung cấp đang hoạt động");
         UserAccount reviewer=current.get(); s.setStatus("SUSPENDED"); s.setRejectionReason(request.reason().trim()); s.setReviewedBy(reviewer); s.setReviewedAt(Instant.now()); suppliers.save(s);
-        audit.record(reviewer,"SUPPLIER_SUSPENDED","Supplier",id,request.reason()); return ApiResponse.ok(view(s));
+        audit.record(reviewer,"SUPPLIER_SUSPENDED","Supplier",id,request.reason());
+        notifications.notify(s.getOwner(), NotificationType.SUPPLIER, "Nhà cung cấp bị tạm dừng",
+            "Gian hàng \"" + s.getName() + "\" tạm dừng hoạt động. Lý do: " + request.reason().trim(), "/partner");
+        return ApiResponse.ok(view(s));
     }
 
     @Override @Transactional public ApiResponse<SupplierView> reactivate(Long id) {
         Supplier s=find(id); if (!"SUSPENDED".equals(s.getStatus())) throw BusinessException.conflict("SUPPLIER_NOT_SUSPENDED","Nhà cung cấp không ở trạng thái tạm dừng");
         UserAccount reviewer=current.get(); s.setStatus("APPROVED"); s.setRejectionReason(null); s.setReviewedBy(reviewer); s.setReviewedAt(Instant.now()); suppliers.save(s);
-        audit.record(reviewer,"SUPPLIER_REACTIVATED","Supplier",id,null); return ApiResponse.ok(view(s));
+        audit.record(reviewer,"SUPPLIER_REACTIVATED","Supplier",id,null);
+        notifications.notify(s.getOwner(), NotificationType.SUPPLIER, "Nhà cung cấp hoạt động trở lại", "Gian hàng \"" + s.getName() + "\" đã được mở lại.", "/partner");
+        return ApiResponse.ok(view(s));
     }
 
     @Override @Transactional public ApiResponse<SupplierView> approveDocument(Long supplierId, Long documentId) {
-        Supplier supplier=find(supplierId); SupplierDocument document=findDocument(supplierId,documentId); UserAccount reviewer=current.get();
+        Supplier supplier=find(supplierId); SupplierDocument document=reviewable(supplier,documentId); UserAccount reviewer=current.get();
         document.setStatus(SupplierDocumentStatus.APPROVED); document.setRejectionReason(null); document.setReviewedBy(reviewer); document.setReviewedAt(Instant.now()); documents.save(document);
-        audit.record(reviewer,"SUPPLIER_DOCUMENT_APPROVED","SupplierDocument",documentId,null); return ApiResponse.ok(view(supplier));
+        audit.record(reviewer,"SUPPLIER_DOCUMENT_APPROVED","SupplierDocument",documentId,null);
+        // During the initial review the profile decision is what gets announced; afterwards each extra document is its own decision.
+        if (!"PENDING".equals(supplier.getStatus()))
+            notifications.notify(supplier.getOwner(), NotificationType.SUPPLIER, "Giấy tờ đã được duyệt", "Giấy tờ \"" + document.getDocumentName() + "\" đã được duyệt.", "/partner/profile");
+        return ApiResponse.ok(view(supplier));
     }
 
     @Override @Transactional public ApiResponse<SupplierView> rejectDocument(Long supplierId, Long documentId, DecisionRequest request) {
-        Supplier supplier=find(supplierId); SupplierDocument document=findDocument(supplierId,documentId); UserAccount reviewer=current.get();
+        Supplier supplier=find(supplierId); SupplierDocument document=reviewable(supplier,documentId); UserAccount reviewer=current.get();
         document.setStatus(SupplierDocumentStatus.REJECTED); document.setRejectionReason(request.reason().trim()); document.setReviewedBy(reviewer); document.setReviewedAt(Instant.now()); documents.save(document);
-        audit.record(reviewer,"SUPPLIER_DOCUMENT_REJECTED","SupplierDocument",documentId,request.reason()); return ApiResponse.ok(view(supplier));
+        audit.record(reviewer,"SUPPLIER_DOCUMENT_REJECTED","SupplierDocument",documentId,request.reason());
+        notifications.notify(supplier.getOwner(), NotificationType.SUPPLIER, "Giấy tờ bị từ chối",
+            "Giấy tờ \"" + document.getDocumentName() + "\" bị từ chối. Lý do: " + request.reason().trim() + "\nVui lòng xóa và tải lại bản hợp lệ.",
+            "PENDING".equals(supplier.getStatus()) ? "/partner/register" : "/partner/profile");
+        return ApiResponse.ok(view(supplier));
+    }
+
+    /** Pending documents can be reviewed any time; while the profile is still under review the reviewer may also change an earlier decision. */
+    private SupplierDocument reviewable(Supplier supplier, Long documentId) {
+        SupplierDocument document=findDocument(supplier.getId(),documentId);
+        if ("REJECTED".equals(supplier.getStatus())) throw BusinessException.conflict("INVALID_SUPPLIER_STATUS","Hồ sơ đã bị từ chối, chờ nhà cung cấp gửi lại");
+        if (document.expiredOn(today())) throw BusinessException.conflict("DOCUMENT_EXPIRED","Giấy tờ đã hết hạn");
+        if (document.getStatus()!=SupplierDocumentStatus.PENDING && !"PENDING".equals(supplier.getStatus()))
+            throw BusinessException.conflict("DOCUMENT_ALREADY_REVIEWED","Giấy tờ đã được xử lý");
+        return document;
     }
 
     private void grantPartner(UserAccount user) {
@@ -163,6 +215,7 @@ public class SupplierServiceImpl implements SupplierService {
     private Supplier findPending(Long id){Supplier s=find(id);if(!"PENDING".equals(s.getStatus()))throw BusinessException.conflict("INVALID_SUPPLIER_STATUS","Hồ sơ không còn chờ duyệt");return s;}
     private void validateType(String type){if(!TYPES.contains(normalize(type)))throw BusinessException.bad("INVALID_SUPPLIER_TYPE","Loại nhà cung cấp không hợp lệ");}
     private String normalize(String value){return value==null?"":value.trim().toUpperCase();}
+    private static LocalDate today(){return LocalDate.now(DateRange.ZONE);}
     private boolean blank(String value){return value==null||value.isBlank();}
     private SupplierView view(Supplier s){
         List<DocumentView> docs=documents.findBySupplierId(s.getId()).stream().map(this::documentView).toList();
@@ -172,6 +225,6 @@ public class SupplierServiceImpl implements SupplierService {
     }
     private DocumentView documentView(SupplierDocument d){
         String url=d.getObjectKey()==null||d.getObjectKey().isBlank()?d.getFileUrl():storage.readUrl(d.getObjectKey());
-        return new DocumentView(d.getId(),d.getType(),d.getDocumentName(),d.getOriginalFileName(),url,d.getStatus().name(),d.getRejectionReason(),d.getUploadedAt());
+        return new DocumentView(d.getId(),d.getType(),d.getDocumentName(),d.getOriginalFileName(),url,d.effectiveStatus(today()).name(),d.getRejectionReason(),d.getUploadedAt(),d.getExpiryDate());
     }
 }

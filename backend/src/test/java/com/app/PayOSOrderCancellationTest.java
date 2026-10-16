@@ -46,6 +46,8 @@ class PayOSOrderCancellationTest {
     @Mock ApplicationEventPublisher events;
     @Mock PayOSPaymentProvider provider;
     @Mock VoucherService voucherService;
+    @Mock com.app.features.orders.service.PartnerOrderNotifier partnerNotifier;
+    @Mock com.app.features.orders.service.BuyerOrderNotifier buyerNotifier;
 
     OrderServiceImpl service;
     UserAccount user;
@@ -56,7 +58,7 @@ class PayOSOrderCancellationTest {
 
     @BeforeEach void setup() {
         service = new OrderServiceImpl(cart, products, orders, supplierOrders, orderItems, payments,
-            current, history, events, provider, voucherService);
+            current, history, events, provider, voucherService, partnerNotifier, buyerNotifier);
         user = new UserAccount(); user.setId(10L);
         order = new MarketOrder(); order.setId(100L); order.setUser(user); order.setOrderCode("CM100");
         order.setStatus("PENDING_PAYMENT"); order.setPaymentMethod("PAYOS"); order.setTotalAmount(new BigDecimal("2000"));

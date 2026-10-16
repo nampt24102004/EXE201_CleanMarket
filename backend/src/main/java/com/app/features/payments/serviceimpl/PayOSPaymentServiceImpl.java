@@ -45,14 +45,18 @@ public class PayOSPaymentServiceImpl implements PayOSPaymentService {
     private final OrderStatusHistoryService history;
     private final ApplicationEventPublisher events;
     private final VoucherService voucherService;
+    private final com.app.features.orders.service.PartnerOrderNotifier partnerNotifier;
+    private final com.app.features.feedback.service.LatePaymentRefunds latePayments;
 
     public PayOSPaymentServiceImpl(PaymentRepository payments, PaymentTransactionRepository transactions,
             OrderRepository orders, OrderItemRepository orderItems, NotificationRepository notifications,
             CurrentUser current, PayOSPaymentProvider provider, OrderStatusHistoryService history,
-            ApplicationEventPublisher events,VoucherService voucherService) {
+            ApplicationEventPublisher events,VoucherService voucherService,
+            com.app.features.orders.service.PartnerOrderNotifier partnerNotifier,
+            com.app.features.feedback.service.LatePaymentRefunds latePayments) {
         this.payments = payments; this.transactions = transactions; this.orders = orders;
         this.orderItems = orderItems; this.notifications = notifications; this.current = current;
-        this.provider = provider; this.history = history; this.events = events;this.voucherService=voucherService;
+        this.provider = provider; this.history = history; this.events = events;this.voucherService=voucherService;this.partnerNotifier=partnerNotifier;this.latePayments=latePayments;
     }
 
     @Override
@@ -159,8 +163,19 @@ public class PayOSPaymentServiceImpl implements PayOSPaymentService {
             log.warn("Duplicate payOS webhook for payment {}", payment.getId());
             return new WebhookResponse(true, "Webhook đã được xử lý");
         }
-        if ("CANCELLED".equals(payment.getOrder().getStatus()))
-            throw BusinessException.conflict("ORDER_CANCELLED", "Đơn hàng đã hủy");
+        if ("CANCELLED".equals(payment.getOrder().getStatus())) {
+            // The customer paid while the order was being cancelled. Rejecting would make payOS retry forever and leave
+            // the money unaccounted for, so record it and open a full refund; the order itself stays cancelled.
+            if (!Boolean.TRUE.equals(webhook.getSuccess()) || !"00".equals(verified.responseCode()))
+                return new WebhookResponse(true, "Đơn hàng đã hủy, bỏ qua giao dịch không thành công");
+            saveTransaction(payment, "PAYOS_WEBHOOK_AFTER_CANCEL", verified.transactionId(), verified.responseCode(),
+                "orderCode=" + verified.orderCode() + ",amount=" + verified.amount());
+            payment.setStatus("PAID"); payment.setPaidAt(Instant.now()); payment.setResponseCode(verified.responseCode());
+            payment.setProviderTransactionNo(verified.transactionId());
+            log.warn("payOS payment {} settled after order {} was cancelled; opening refund", payment.getId(), payment.getOrder().getOrderCode());
+            latePayments.openFor(payment);
+            return new WebhookResponse(true, "Đơn hàng đã hủy, đã tạo yêu cầu hoàn tiền");
+        }
 
         if (!Boolean.TRUE.equals(webhook.getSuccess()) || !"00".equals(verified.responseCode())) {
             saveTransaction(payment, "PAYOS_WEBHOOK", verified.transactionId(), verified.responseCode(),
@@ -207,6 +222,7 @@ public class PayOSPaymentServiceImpl implements PayOSPaymentService {
         order.setStatus("CONFIRMED");
         voucherService.redeem(order.getId());
         history.record(order, "CONFIRMED", null, historyNote);
+        partnerNotifier.orderReady(order);
 
         Notification notification = new Notification();
         notification.setRecipient(order.getUser()); notification.setType(NotificationType.PAYMENT);

@@ -6,6 +6,7 @@ import {
   Spinner,
   Alert,
   Modal,
+  Form,
 } from 'react-bootstrap'
 import {
   ShoppingBag,
@@ -25,8 +26,24 @@ const orderStatusBadge = {
   CANCELLED: { label: 'Đã hủy', bg: 'secondary', next: null, nextLabel: null },
 }
 
+// What the farm should know about the money: COD is collected on delivery, payOS must be PAID before shipping.
+const paymentBadge = (order) => {
+  if (order.paymentMethod === 'COD') {
+    if (order.paymentStatus === 'PAID') return { label: 'COD · Đã thu tiền', bg: 'success' }
+    if (order.paymentStatus === 'CANCELLED') return { label: 'COD · Không thu', bg: 'light' }
+    return { label: 'COD · Thu khi giao', bg: 'secondary' }
+  }
+  return {
+    PAID: { label: 'payOS · Đã thanh toán', bg: 'success' },
+    REFUNDED: { label: 'payOS · Đã hoàn tiền', bg: 'dark' },
+    PENDING: { label: 'payOS · Chờ thanh toán', bg: 'warning' },
+  }[order.paymentStatus] || { label: 'payOS · Chưa thanh toán', bg: 'danger' }
+}
+const awaitingPayment = (order) => order.paymentMethod === 'PAYOS' && !['PAID', 'REFUNDED'].includes(order.paymentStatus)
+
 export default function PartnerOrdersView() {
   const [orders, setOrders] = useState([])
+  const [showUnpaid, setShowUnpaid] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -38,18 +55,27 @@ export default function PartnerOrdersView() {
     setLoading(true)
     setError('')
     try {
-      const data = await api.get('/api/partner/orders')
+      const data = await api.get(`/api/partner/orders?includeUnpaid=${showUnpaid}`)
       setOrders(data || [])
     } catch (err) {
       setError(err.message || 'Lỗi tải đơn hàng của nhà cung cấp.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [showUnpaid])
 
   useEffect(() => {
     void Promise.resolve().then(loadOrders)
   }, [loadOrders])
+
+  // Complaints customers raised about this supplier's parts (or whole orders it supplied to).
+  const [complaints, setComplaints] = useState([])
+  useEffect(() => {
+    let active = true
+    api.get('/api/partner/complaints').then((data) => { if (active) setComplaints(data || []) }).catch(() => {})
+    return () => { active = false }
+  }, [])
+  const openComplaints = complaints.filter((c) => c.status === 'PENDING')
 
   const handleUpdateStatus = async (orderId, nextStatus, nextLabel) => {
     setUpdatingId(orderId)
@@ -92,12 +118,40 @@ export default function PartnerOrdersView() {
             Theo dõi đơn đặt hàng nông sản của khách hàng, đóng gói và bàn giao đối tác giao vận
           </p>
         </div>
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center gap-3">
+          <Form.Check
+            type="switch"
+            id="show-unpaid-orders"
+            className="small text-secondary"
+            label="Hiện đơn payOS chưa thanh toán"
+            checked={showUnpaid}
+            onChange={(e) => setShowUnpaid(e.target.checked)}
+          />
           <Badge bg="success" pill className="px-3 py-2">
             {orders.length} tổng đơn hàng
           </Badge>
         </div>
       </div>
+
+      {complaints.length > 0 && (
+        <div className="admin-card mb-4">
+          <h6 className="fw-bold text-dark mb-2">
+            Khiếu nại của khách hàng {openComplaints.length > 0 && <Badge bg="danger" className="ms-1">{openComplaints.length} đang chờ</Badge>}
+          </h6>
+          <div className="d-grid gap-2">
+            {complaints.slice(0, 5).map((c) => (
+              <div key={c.id} className="border rounded p-2 small">
+                <div className="d-flex justify-content-between gap-2">
+                  <span><code>{c.orderCode}</code> · <strong>{c.reason}</strong></span>
+                  <Badge bg={c.status === 'RESOLVED' ? 'success' : 'warning'}>{c.status === 'RESOLVED' ? 'Đã xử lý' : 'Đang xử lý'}</Badge>
+                </div>
+                <div className="text-secondary">{c.description}</div>
+                {c.resolution && <div className="text-success">Phương án: {c.resolution}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filter Tabs */}
       <div className="d-flex gap-2 mb-3 flex-wrap">
@@ -140,6 +194,7 @@ export default function PartnerOrdersView() {
                 <th>Mã đơn hàng</th>
                 <th>Sản phẩm trong đơn</th>
                 <th>Tổng tiền hàng</th>
+                <th>Thanh toán</th>
                 <th>Trạng thái</th>
                 <th>Thao tác xử lý</th>
               </tr>
@@ -153,6 +208,8 @@ export default function PartnerOrdersView() {
                   nextLabel: null,
                 }
                 const isUpdating = updatingId === order.id
+                const payment = paymentBadge(order)
+                const blocked = awaitingPayment(order)
 
                 return (
                   <tr key={order.id}>
@@ -161,6 +218,11 @@ export default function PartnerOrdersView() {
                       <div className="text-secondary small" style={{ fontSize: '0.72rem' }}>
                         ID phần đơn: #{order.id}
                       </div>
+                      {order.recipientName && (
+                        <div className="small text-dark mt-1">
+                          {order.recipientName} · {order.phone}
+                        </div>
+                      )}
                     </td>
                     <td>
                       <div className="d-flex flex-column gap-1" style={{ maxWidth: '320px' }}>
@@ -182,6 +244,11 @@ export default function PartnerOrdersView() {
                       </strong>
                     </td>
                     <td>
+                      <Badge bg={payment.bg} className="px-2 py-1">
+                        {payment.label}
+                      </Badge>
+                    </td>
+                    <td>
                       <Badge bg={config.bg} className="px-2 py-1">
                         {config.label}
                       </Badge>
@@ -193,7 +260,8 @@ export default function PartnerOrdersView() {
                             variant={order.status === 'CREATED' ? 'success' : 'outline-success'}
                             size="sm"
                             className="d-flex align-items-center gap-1 shadow-xs"
-                            disabled={isUpdating}
+                            disabled={isUpdating || blocked}
+                            title={blocked ? 'Khách chưa thanh toán payOS, chưa thể xử lý đơn' : undefined}
                             onClick={() =>
                               handleUpdateStatus(order.id, config.next, config.nextLabel)
                             }
@@ -246,6 +314,20 @@ export default function PartnerOrdersView() {
                   {orderStatusBadge[viewOrderDetail.status]?.label || viewOrderDetail.status}
                 </Badge>
               </div>
+              <div className="d-flex justify-content-between align-items-center border-bottom pb-2">
+                <span className="text-secondary small">Thanh toán:</span>
+                <Badge bg={paymentBadge(viewOrderDetail).bg} className="px-2 py-1">
+                  {paymentBadge(viewOrderDetail).label}
+                </Badge>
+              </div>
+              {viewOrderDetail.recipientName && (
+                <div className="border-bottom pb-2 small">
+                  <div className="text-secondary mb-1">Giao tới:</div>
+                  <div className="fw-bold text-dark">{viewOrderDetail.recipientName} · {viewOrderDetail.phone}</div>
+                  <div className="text-dark">{viewOrderDetail.address}</div>
+                  {viewOrderDetail.note && <div className="text-secondary fst-italic">Ghi chú: {viewOrderDetail.note}</div>}
+                </div>
+              )}
 
               <div>
                 <h6 className="small fw-bold text-dark mb-2 d-flex align-items-center gap-1">

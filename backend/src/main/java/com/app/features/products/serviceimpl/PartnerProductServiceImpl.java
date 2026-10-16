@@ -43,8 +43,11 @@ public class PartnerProductServiceImpl implements PartnerProductService {
         audit.record(current.get(),"PRODUCT_CREATED","Product",p.getId(),null);return ApiResponse.ok(view(p));
     }
     @Override @Transactional public ApiResponse<ProductView> update(Long id,ProductRequest request){
-        Product p=ownedProduct(id);if("APPROVED".equals(p.getApprovalStatus()))throw BusinessException.conflict("INVALID_PRODUCT_STATUS","Sản phẩm đã duyệt không thể sửa");
-        fill(p,request);p.setApprovalStatus("DRAFT");p.setRejectionReason(null);p.setReviewedAt(null);p.setReviewedBy(null);products.save(p);
+        Product p=ownedProduct(id);if("PENDING".equals(p.getApprovalStatus()))throw BusinessException.conflict("INVALID_PRODUCT_STATUS","Sản phẩm đang chờ duyệt, vui lòng đợi kết quả trước khi sửa");
+        // Editing an approved product takes it off sale until the changes are reviewed again (same path as a new product).
+        boolean wasApproved="APPROVED".equals(p.getApprovalStatus());
+        fill(p,request);p.setApprovalStatus("DRAFT");p.setStatus("INACTIVE");p.setRejectionReason(null);p.setReviewedAt(null);p.setReviewedBy(null);products.save(p);
+        if(wasApproved)audit.record(current.get(),"PRODUCT_EDITED_AFTER_APPROVAL","Product",id,null);
         return ApiResponse.ok(view(p));
     }
     @Override @Transactional public ApiResponse<List<ImageView>> uploadImages(Long id,List<MultipartFile> files){
@@ -59,9 +62,23 @@ public class PartnerProductServiceImpl implements PartnerProductService {
         Product p=editable(id);String normalized=type==null?"":type.trim().toUpperCase();if(!CERT_TYPES.contains(normalized))throw BusinessException.bad("INVALID_DOCUMENT","Loại chứng nhận không hợp lệ");
         if(number==null||number.isBlank()||issuer==null||issuer.isBlank())throw BusinessException.bad("INVALID_DOCUMENT","Thiếu thông tin chứng nhận");
         if(expiry!=null&&issued!=null&&expiry.isBefore(issued))throw BusinessException.bad("INVALID_DOCUMENT","Ngày hết hạn không hợp lệ");
+        if(expiry!=null&&expiry.isBefore(LocalDate.now(com.app.common.DateRange.ZONE)))throw BusinessException.bad("CERTIFICATE_EXPIRED","Chứng nhận đã hết hạn, vui lòng tải bản còn hiệu lực");
         var stored=storage.upload(file,"products/"+id+"/certificates",DOC_EXT);Certification c=new Certification();c.setProduct(p);c.setType(normalized);c.setCertificateNo(number.trim());
         c.setIssuer(issuer.trim());c.setIssuedAt(issued);c.setExpiryAt(expiry);c.setObjectKey(stored.objectKey());c.setFileUrl(stored.fileUrl());c.setStatus(CertificationStatus.PENDING);certifications.save(c);
         audit.record(current.get(),"CERTIFICATE_UPLOADED","Certification",c.getId(),normalized);return ApiResponse.ok(certificateView(c));
+    }
+    /** Rejected or expired certificates can always be withdrawn; anything else only while the product is still editable. */
+    @Override @Transactional public ApiResponse<ProductView> deleteCertificate(Long id,Long certificateId){
+        Product p=ownedProduct(id);Certification c=certifications.findById(certificateId).filter(x->x.getProduct()!=null&&x.getProduct().getId().equals(id)).orElseThrow(()->BusinessException.missing("Chứng nhận"));
+        boolean withdrawable=c.getStatus()==CertificationStatus.REJECTED||c.expiredOn(LocalDate.now(com.app.common.DateRange.ZONE))||Set.of("DRAFT","REJECTED").contains(p.getApprovalStatus());
+        if(!withdrawable)throw BusinessException.conflict("CERTIFICATE_LOCKED","Chỉ xóa được chứng nhận bị từ chối/hết hạn, hoặc khi sản phẩm đang ở bản nháp");
+        certifications.delete(c);storage.delete(c.getObjectKey());audit.record(current.get(),"CERTIFICATE_DELETED","Certification",certificateId,c.getType());return ApiResponse.ok(view(p));
+    }
+    /** Partner switches an approved product on or off sale without a new review (e.g. out of season). */
+    @Override @Transactional public ApiResponse<ProductView> availability(Long id,boolean active){
+        approvedSupplier();Product p=ownedProduct(id);
+        if(!"APPROVED".equals(p.getApprovalStatus()))throw BusinessException.conflict("INVALID_PRODUCT_STATUS","Chỉ bật/tắt bán được sản phẩm đã duyệt");
+        p.setStatus(active?"ACTIVE":"INACTIVE");products.save(p);audit.record(current.get(),active?"PRODUCT_RESUMED":"PRODUCT_PAUSED","Product",id,null);return ApiResponse.ok(view(p));
     }
     @Override @Transactional public ApiResponse<ProductView> submit(Long id){
         Product p=editable(id);if(!Set.of("DRAFT","REJECTED").contains(p.getApprovalStatus()))throw BusinessException.conflict("INVALID_PRODUCT_STATUS","Sản phẩm không thể gửi duyệt");
@@ -74,5 +91,5 @@ public class PartnerProductServiceImpl implements PartnerProductService {
     private void fill(Product p,ProductRequest r){Category c=categories.findById(r.categoryId()).filter(Category::isActive).orElseThrow(()->BusinessException.missing("Danh mục"));p.setCategory(c);p.setName(r.name().trim());p.setDescription(r.description());p.setPrice(r.price());p.setUnit(r.unit().trim());p.setImageUrl(r.imageUrl());p.setCertificateNo(r.certificateNo());p.setStock(r.stock());p.setOrigin(r.origin().trim());}
     private ProductView view(Product p){return new ProductView(p.getId(),p.getName(),p.getPrice(),p.getUnit(),p.getApprovalStatus(),p.getStatus(),p.getStock(),p.getOrigin(),p.getDescription(),p.getCategory().getId(),p.getCategory().getName(),p.getImageUrl(),p.getRejectionReason(),images.findByProductIdOrderBySortOrderAsc(p.getId()).stream().map(this::imageView).toList(),certifications.findByProductIdOrderByCreatedAtAsc(p.getId()).stream().map(this::certificateView).toList(),p.getCreatedAt());}
     private ImageView imageView(ProductImage i){String url=i.getObjectKey()==null?i.getImageUrl():storage.readUrl(i.getObjectKey());return new ImageView(i.getId(),url,i.getOriginalFileName(),i.getSortOrder());}
-    private CertificateView certificateView(Certification c){String url=c.getObjectKey()==null?c.getFileUrl():storage.readUrl(c.getObjectKey());return new CertificateView(c.getId(),c.getType(),c.getCertificateNo(),c.getIssuer(),c.getIssuedAt(),c.getExpiryAt(),url,c.getStatus().name(),c.getRejectionReason());}
+    private CertificateView certificateView(Certification c){String url=c.getObjectKey()==null?c.getFileUrl():storage.readUrl(c.getObjectKey());return new CertificateView(c.getId(),c.getType(),c.getCertificateNo(),c.getIssuer(),c.getIssuedAt(),c.getExpiryAt(),url,c.effectiveStatus(LocalDate.now(com.app.common.DateRange.ZONE)).name(),c.getRejectionReason());}
 }

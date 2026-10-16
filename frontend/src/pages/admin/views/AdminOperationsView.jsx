@@ -15,9 +15,12 @@ import {
   X,
   FileText,
   ExternalLink,
+  Eye,
 } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
 import { api } from '../../../services/apiClient'
 import formatCurrency from '../../../utils/formatCurrency'
+import { refundStatus } from '../../../utils/refundStatus'
 
 const orderStatusBadge = {
   CREATED: 'info',
@@ -39,6 +42,8 @@ const statusLabel = {
 }
 
 export default function AdminOperationsView({ subSection = 'suppliers', onCatalogChanged }) {
+  // Same view serves /manager and /admin; detail pages live under whichever area is open.
+  const base = useLocation().pathname.startsWith('/admin') ? '/admin' : '/manager'
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -155,20 +160,29 @@ export default function AdminOperationsView({ subSection = 'suppliers', onCatalo
     }
   }
 
-  const handleCompleteRefund = async (id) => {
+  // Refund steps: check the bank account the customer sent, then record the real transfer reference.
+  const refundAction = async (request, success) => {
     setError('')
     setNotice('')
     try {
-      const refundRef = 'ADMIN-REFUND-' + String(new Date().getTime())
-      await api.put(`/api/manager/refunds/${id}/manual-complete`, {
-        providerRef: refundRef,
-        note: 'Đã hoàn tất hoàn tiền cho khách bởi Admin',
-      })
-      setNotice('Đã xác nhận hoàn tiền thành công!')
+      await request()
+      setNotice(success)
       await loadData()
     } catch (err) {
       setError(`Lỗi hoàn tiền: ${err.message}`)
     }
+  }
+  const handleApproveBank = (item) =>
+    refundAction(() => api.put(`/api/manager/refunds/${item.id}/bank-info/approve`), `Đã duyệt tài khoản nhận tiền của đơn ${item.orderCode}.`)
+  const handleRejectBank = (item) => {
+    const reason = window.prompt('Lý do tài khoản chưa hợp lệ (khách sẽ nhận được):', 'Tên chủ tài khoản không khớp')
+    if (!reason?.trim()) return
+    refundAction(() => api.put(`/api/manager/refunds/${item.id}/bank-info/reject`, { reason: reason.trim() }), `Đã yêu cầu khách gửi lại tài khoản cho đơn ${item.orderCode}.`)
+  }
+  const handleCompleteRefund = (item) => {
+    const providerRef = window.prompt(`Nhập mã giao dịch chuyển khoản ${formatCurrency(Number(item.amount))} tới ${item.bankName} ${item.bankAccountNumber}:`)
+    if (!providerRef?.trim()) return
+    refundAction(() => api.put(`/api/manager/refunds/${item.id}/manual-complete`, { providerRef: providerRef.trim(), note: 'Đã chuyển khoản hoàn tiền' }), 'Đã ghi nhận hoàn tiền thành công!')
   }
 
   return (
@@ -220,7 +234,9 @@ export default function AdminOperationsView({ subSection = 'suppliers', onCatalo
                 {suppliers.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <strong className="text-dark fs-6">{item.name}</strong>
+                      <Link to={`${base}/suppliers/${item.id}`} className="text-decoration-none">
+                        <strong className="text-dark fs-6">{item.name}</strong>
+                      </Link>
                     </td>
                     <td className="small text-secondary">{item.location}</td>
                     <td>
@@ -309,7 +325,9 @@ export default function AdminOperationsView({ subSection = 'suppliers', onCatalo
                 {products.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <strong className="text-dark fs-6">{item.name}</strong>
+                      <Link to={`${base}/products/${item.id}`} className="text-decoration-none">
+                        <strong className="text-dark fs-6">{item.name}</strong>
+                      </Link>
                     </td>
                     <td className="small text-secondary">{item.supplierName}</td>
                     <td>
@@ -319,6 +337,13 @@ export default function AdminOperationsView({ subSection = 'suppliers', onCatalo
                     </td>
                     <td>
                       <div className="d-flex align-items-center gap-2">
+                        <Link
+                          to={`${base}/products/${item.id}`}
+                          className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 px-3 py-1"
+                        >
+                          <Eye size={14} />
+                          <span>Xem chi tiết</span>
+                        </Link>
                         <Button
                           variant="success"
                           size="sm"
@@ -472,30 +497,49 @@ export default function AdminOperationsView({ subSection = 'suppliers', onCatalo
               <thead>
                 <tr>
                   <th>Mã đơn</th>
+                  <th>Khách hàng</th>
                   <th>Số tiền hoàn</th>
+                  <th>Tài khoản nhận</th>
                   <th>Trạng thái</th>
                   <th>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
-                {refunds.map((item) => (
-                  <tr key={item.id}>
-                    <td><strong className="text-dark">{item.orderCode}</strong></td>
-                    <td className="fw-bold text-danger">{formatCurrency(Number(item.amount))}</td>
-                    <td><Badge bg="warning" text="dark">{item.status}</Badge></td>
-                    <td>
-                      {item.status !== 'COMPLETED' && (
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => handleCompleteRefund(item.id)}
-                        >
-                          Xác nhận hoàn tất hoàn tiền
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {refunds.map((item) => {
+                  const [label, color] = refundStatus[item.status] || [item.status, 'secondary']
+                  return (
+                    <tr key={item.id}>
+                      <td><strong className="text-dark">{item.orderCode}</strong></td>
+                      <td className="small">{item.customerName}<div className="text-secondary">{item.customerEmail}</div></td>
+                      <td className="fw-bold text-danger">{formatCurrency(Number(item.amount))}</td>
+                      <td className="small">
+                        {item.bankAccountNumber ? (
+                          <>
+                            <div className="fw-semibold">{item.bankName}</div>
+                            <div className="font-monospace">{item.bankAccountNumber}</div>
+                            <div className="text-secondary">{item.bankAccountHolder}</div>
+                          </>
+                        ) : <span className="text-secondary">Chưa có</span>}
+                        {item.status === 'REQUESTED' && item.bankReviewNote && <div className="text-danger">Đã trả lại: {item.bankReviewNote}</div>}
+                        {item.providerRef && <div className="text-success">Mã GD: {item.providerRef}</div>}
+                      </td>
+                      <td><Badge bg={color}>{label}</Badge></td>
+                      <td>
+                        <div className="d-flex flex-wrap gap-1">
+                          {item.status === 'BANK_INFO_SUBMITTED' && (
+                            <>
+                              <Button variant="success" size="sm" onClick={() => handleApproveBank(item)}>Duyệt tài khoản</Button>
+                              <Button variant="outline-danger" size="sm" onClick={() => handleRejectBank(item)}>Yêu cầu gửi lại</Button>
+                            </>
+                          )}
+                          {item.status === 'APPROVED' && (
+                            <Button variant="danger" size="sm" onClick={() => handleCompleteRefund(item)}>Đã chuyển khoản</Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </Table>
           )}

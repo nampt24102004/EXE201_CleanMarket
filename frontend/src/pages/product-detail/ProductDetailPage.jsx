@@ -1,3 +1,4 @@
+import RatingSummary from '../../components/product/RatingSummary'
 import { useState } from 'react'
 import { Badge, Button, Card, Col, Container, Image, ListGroup, Row, Stack } from 'react-bootstrap'
 import QuantitySelector from '../../components/product/QuantitySelector'
@@ -72,6 +73,7 @@ function ProductDetailPage({
           <span className="text-dark fw-semibold">{product.name}</span>
         </div>
         <h1 className="section-title mb-1">{product.name}</h1>
+        <RatingSummary rating={product.averageRating} count={product.reviewCount} className="mb-1" />
         <p className="text-secondary mb-0">
           Nông sản tươi sạch được kiểm định và cấp mã truy xuất nguồn gốc.
         </p>

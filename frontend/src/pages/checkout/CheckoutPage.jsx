@@ -34,6 +34,22 @@ function CheckoutPage({
     ? `${customerInfo.address.trim()}, ${selectedZone.zoneName}`
     : ''
 
+  // Saved addresses from the profile's address book; the default one fills an empty form once.
+  const [savedAddresses, setSavedAddresses] = useState([])
+  const applyAddress = (a) => onCustomerInfoChange({ ...customerInfo, fullName: a.recipientName, phone: a.phone, address: a.addressLine })
+  useEffect(() => {
+    let active = true
+    api.get('/api/users/me/addresses').then((list) => {
+      if (!active) return
+      setSavedAddresses(list || [])
+      const preferred = (list || []).find((a) => a.defaultAddress)
+      if (preferred && !customerInfo.address?.trim()) applyAddress(preferred)
+    }).catch(() => {})
+    return () => { active = false }
+    // Prefill only once on arrival; later edits by the customer must not be overwritten.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     let active = true
     api.get('/api/checkout/shipping-zones')
@@ -139,6 +155,21 @@ function CheckoutPage({
       <Row className="g-4">
         <Col lg={7}>
           <Stack gap={4}>
+            {savedAddresses.length > 0 && (
+              <Form.Select
+                aria-label="Chọn địa chỉ đã lưu"
+                defaultValue=""
+                onChange={(e) => {
+                  const picked = savedAddresses.find((a) => String(a.id) === e.target.value)
+                  if (picked) applyAddress(picked)
+                }}
+              >
+                <option value="" disabled>Chọn địa chỉ đã lưu trong sổ địa chỉ…</option>
+                {savedAddresses.map((a) => (
+                  <option key={a.id} value={a.id}>{a.recipientName} · {a.phone} · {a.addressLine}{a.defaultAddress ? ' (mặc định)' : ''}</option>
+                ))}
+              </Form.Select>
+            )}
             <OrderInfoPage
               customerInfo={customerInfo}
               onCustomerInfoChange={onCustomerInfoChange}

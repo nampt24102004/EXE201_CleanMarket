@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom'
 const sectionTitles = {
   '': 'Bảng điều khiển & Hàng đợi vận hành',
   'suppliers': 'Duyệt hồ sơ nhà cung cấp & Giấy tờ pháp lý',
-  'products': 'Duyệt nông sản mới & Mã VietGAP',
+  'products': 'Danh sách & Quản lý nông sản',
   'orders': 'Quản lý toàn bộ đơn hàng sàn',
   'complaints': 'Xử lý khiếu nại khách hàng',
   'refunds': 'Quản lý hoàn tiền thủ công',
@@ -58,6 +58,7 @@ export default function StaffTopbar({
           <RefreshCw size={14} className={refreshing ? 'spin' : ''} />
           <span className="d-none d-sm-inline">Làm mới</span>
         </Button>
+        <Link to="/profile" className="btn btn-sm btn-light border" title="Hồ sơ và mật khẩu">Tài khoản</Link>
 
         {totalPending > 0 && (
           <Link

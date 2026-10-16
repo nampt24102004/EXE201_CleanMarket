@@ -51,6 +51,8 @@ const normalizeProduct = (product) => ({
   vietgapCertificate: product.certificateNo,
   certificateNo: product.certificateNo,
   batch: product.batch || null,
+  averageRating: product.averageRating ?? null,
+  reviewCount: product.reviewCount || 0,
   approvalStatus: 'APPROVED',
   status: 'ACTIVE',
 })
@@ -311,7 +313,7 @@ function AppContent() {
       <Route path="/payment/cancel" element={protect(['USER'], <PayOSPaymentPage returnMode />)} />
       <Route path="/orders" element={protect(['USER'], <MyOrdersPage orders={orders} />)} />
       <Route path="/orders/:orderCode" element={protect(['USER'], <OrderDetailPage orders={orders} onOrdersChanged={loadOrders} />)} />
-      <Route path="/profile" element={protect(['USER'], <ProfilePage />)} />
+      <Route path="/profile" element={protect(['USER', 'PARTNER', 'MANAGER', 'ADMIN'], <ProfilePage />)} />
       <Route path="/partner/register" element={protect(['USER'], <SupplierRegistrationPage />)} />
       <Route path="/403" element={<Container className="py-5"><Alert variant="danger">Bạn không có quyền truy cập khu vực này.</Alert></Container>} />
       <Route path="*" element={<NotFoundPage currentPath={location.pathname} onBackHome={() => navigate('/')} />} />

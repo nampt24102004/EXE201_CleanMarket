@@ -215,6 +215,20 @@ export default function PartnerProductsView({
     }
   }
 
+  const handleToggleSale = async (product) => {
+    const active = product.status !== 'ACTIVE'
+    setError('')
+    setNotice('')
+    try {
+      await api.put(`/api/partner/products/${product.id}/availability`, { active })
+      setNotice(active ? `Đã mở bán lại "${product.name}".` : `Đã tạm ngừng bán "${product.name}".`)
+      await loadData()
+      await onCatalogChanged()
+    } catch (err) {
+      setError(`Không thể cập nhật trạng thái bán: ${err.message}`)
+    }
+  }
+
   const filteredProducts = products.filter((p) => {
     if (statusFilter === 'ALL') return true
     if (statusFilter === 'PENDING') return ['PENDING', 'PENDING_APPROVAL'].includes(p.approvalStatus)
@@ -371,15 +385,18 @@ export default function PartnerProductsView({
                       <Badge bg={st.bg} className="px-2 py-1">
                         {st.label}
                       </Badge>
-                      {p.approvalStatus === 'APPROVED' && (
+                      {p.approvalStatus === 'APPROVED' && p.status === 'ACTIVE' && (
                         <div className="small text-success mt-1" style={{ fontSize: '0.7rem' }}>
                           <CheckCircle size={10} className="me-1 inline-block" /> Đang bán
                         </div>
                       )}
+                      {p.approvalStatus === 'APPROVED' && p.status !== 'ACTIVE' && (
+                        <div className="small text-secondary mt-1" style={{ fontSize: '0.7rem' }}>Đang tạm ngừng bán</div>
+                      )}
                     </td>
                     <td>
                       <div className="d-flex align-items-center gap-1">
-                        {p.approvalStatus !== 'APPROVED' && (
+                        {['DRAFT', 'REJECTED'].includes(p.approvalStatus) && (
                           <Button
                             variant="outline-primary"
                             size="sm"
@@ -403,14 +420,28 @@ export default function PartnerProductsView({
                           </Button>
                         )}
                         {p.approvalStatus === 'APPROVED' && (
-                          <Button
-                            variant="outline-secondary"
-                            size="sm"
-                            className="px-2 py-1"
-                            onClick={() => handleOpenEdit(p)}
-                          >
-                            Cập nhật kho
-                          </Button>
+                          <>
+                            <Button
+                              variant={p.status === 'ACTIVE' ? 'outline-warning' : 'outline-success'}
+                              size="sm"
+                              className="px-2 py-1"
+                              title={p.status === 'ACTIVE' ? 'Tạm ẩn khỏi trang bán, không cần duyệt lại' : 'Bán lại sản phẩm'}
+                              onClick={() => handleToggleSale(p)}
+                            >
+                              <span style={{ fontSize: '0.75rem' }}>{p.status === 'ACTIVE' ? 'Ngừng bán' : 'Mở bán'}</span>
+                            </Button>
+                            <Button
+                              variant="outline-secondary"
+                              size="sm"
+                              className="px-2 py-1"
+                              title="Sửa giá, mô tả… sản phẩm sẽ tạm ẩn và cần duyệt lại"
+                              onClick={() => {
+                                if (window.confirm('Sửa sản phẩm đã duyệt sẽ tạm ẩn sản phẩm khỏi trang bán cho tới khi được duyệt lại. Để nhập thêm hàng, hãy tạo lô mới. Tiếp tục sửa?')) handleOpenEdit(p)
+                              }}
+                            >
+                              <Edit2 size={13} />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </td>

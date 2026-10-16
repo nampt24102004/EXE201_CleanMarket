@@ -8,6 +8,8 @@ import StaffSuppliersView from './views/StaffSuppliersView'
 import StaffVouchersView from './views/StaffVouchersView'
 import StaffShippingView from './views/StaffShippingView'
 import AdminOperationsView from '../admin/views/AdminOperationsView'
+import AdminProductsView from '../admin/views/AdminProductsView'
+import AdminOrdersView from '../admin/views/AdminOrdersView'
 import { api } from '../../services/apiClient'
 import '../admin/admin.css'
 
@@ -82,8 +84,17 @@ export default function StaffPage({ onCatalogChanged }) {
     )
   } else if (section === 'suppliers') {
     mainView = <StaffSuppliersView onCatalogChanged={onCatalogChanged} />
+  } else if (section === 'products') {
+    mainView = (
+      <AdminProductsView
+        onCatalogChanged={onCatalogChanged}
+        base="/manager"
+      />
+    )
+  } else if (section === 'orders') {
+    mainView = <AdminOrdersView />
   } else if (
-    ['products', 'orders', 'complaints', 'refunds'].includes(section)
+    ['complaints', 'refunds'].includes(section)
   ) {
     mainView = (
       <AdminOperationsView

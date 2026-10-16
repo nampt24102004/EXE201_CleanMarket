@@ -15,7 +15,7 @@ const sectionTitles = {
   'settings': 'Cấu hình tham số hệ thống',
   'audit-logs': 'Nhật ký kiểm toán an toàn (Audit Logs)',
   'suppliers': 'Duyệt hồ sơ nhà cung cấp đối tác',
-  'products': 'Duyệt sản phẩm nông sản mới',
+  'products': 'Danh sách & Quản lý nông sản',
   'orders': 'Quản lý toàn bộ đơn hàng sàn',
   'complaints': 'Xử lý khiếu nại khách hàng',
   'refunds': 'Quản lý hoàn tiền thủ công',
@@ -70,6 +70,7 @@ export default function AdminTopbar({
           <RefreshCw size={14} className={refreshing ? 'spin' : ''} />
           <span className="d-none d-sm-inline">Làm mới</span>
         </Button>
+        <Link to="/profile" className="btn btn-sm btn-light border" title="Hồ sơ và mật khẩu">Tài khoản</Link>
 
         {totalPending > 0 && (
           <Link

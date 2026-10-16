@@ -1,3 +1,4 @@
+import RatingSummary from './RatingSummary'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import formatCurrency from '../../utils/formatCurrency'
@@ -93,6 +94,7 @@ function ProductCard({ product, onSelectProduct, onAddToCart }) {
         <h3 className="product-title" onClick={handlePreview} title={product.name}>
           {product.name}
         </h3>
+        <RatingSummary rating={product.averageRating} count={product.reviewCount} className="mb-1" />
 
         {/* Short Description */}
         <p className="text-muted small mb-3 text-truncate">

@@ -29,6 +29,8 @@ public class Certification extends BaseEntity {
     @Column(length = 1000) private String rejectionReason;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "reviewed_by") private UserAccount reviewedBy;
     private Instant reviewedAt;
+    public boolean expiredOn(LocalDate day) { return status == CertificationStatus.EXPIRED || expiryAt != null && expiryAt.isBefore(day); }
+    public CertificationStatus effectiveStatus(LocalDate day) { return status != CertificationStatus.REJECTED && expiredOn(day) ? CertificationStatus.EXPIRED : status; }
     @PrePersist @PreUpdate private void validateTarget() {
         int targets = (supplier == null ? 0 : 1) + (product == null ? 0 : 1) + (batch == null ? 0 : 1);
         if (targets != 1) throw new IllegalStateException("A certification must target exactly one supplier, product or batch");

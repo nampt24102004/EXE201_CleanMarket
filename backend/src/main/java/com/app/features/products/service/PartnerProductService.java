@@ -13,5 +13,7 @@ public interface PartnerProductService {
     ApiResponse<ProductView> update(Long id,ProductRequest request);
     ApiResponse<List<ImageView>> uploadImages(Long id,List<MultipartFile> files);
     ApiResponse<CertificateView> uploadCertificate(Long id,String type,String number,String issuer,LocalDate issuedDate,LocalDate expiryDate,MultipartFile file);
+    ApiResponse<ProductView> deleteCertificate(Long id,Long certificateId);
     ApiResponse<ProductView> submit(Long id);
+    ApiResponse<ProductView> availability(Long id,boolean active);
 }

@@ -30,8 +30,8 @@ public class SecurityConfig {
                     else writeError(response,json,HttpStatus.FORBIDDEN,"FORBIDDEN","Bạn không có quyền truy cập");
                 }))
             .authorizeHttpRequests(auth->auth
-                .requestMatchers("/","/api/auth/csrf","/api/auth/register","/api/auth/login","/api/auth/email/**","/api/auth/password/**","/api/payments/payos/webhook","/swagger-ui/**","/swagger-ui.html","/v3/api-docs/**","/actuator/health").permitAll()
-                .requestMatchers(HttpMethod.GET,"/api/products/**","/api/categories","/api/suppliers","/api/suppliers/*","/api/trace/**").permitAll()
+                .requestMatchers("/","/api/auth/csrf","/api/auth/register","/api/auth/login","/api/auth/google","/api/auth/email/**","/api/auth/password/**","/api/payments/payos/webhook","/swagger-ui/**","/swagger-ui.html","/v3/api-docs/**","/actuator/health").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/products/**","/api/categories","/api/suppliers","/api/suppliers/*","/api/trace/**","/api/files/**").permitAll()
                 .requestMatchers("/api/supplier-applications/**").hasRole("USER")
                 .requestMatchers("/api/partner/**").hasRole("PARTNER")
                 .requestMatchers("/api/manager/**").hasAnyRole("MANAGER","ADMIN")

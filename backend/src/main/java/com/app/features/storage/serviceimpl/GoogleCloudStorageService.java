@@ -52,6 +52,12 @@ public class GoogleCloudStorageService implements StorageService {
         catch (Exception ex) { throw BusinessException.bad("UPLOAD_FAILED", "Không thể tải file lên kho lưu trữ"); }
     }
 
+    @Override public void delete(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) return;
+        try { storage.delete(bucket, objectKey); }
+        catch (RuntimeException ex) { org.slf4j.LoggerFactory.getLogger(GoogleCloudStorageService.class).warn("Could not delete object {}: {}", objectKey, ex.getMessage()); }
+    }
+
     @Override public String readUrl(String objectKey) {
         ensureConfigured();
         try {

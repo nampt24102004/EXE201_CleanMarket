@@ -28,6 +28,8 @@ public class FeedbackController {
     public ApiResponse<ComplaintView> complaint(@Valid @RequestBody ComplaintRequest request) { return service.complaint(request); }
     @GetMapping("/complaints/my") @PreAuthorize("hasRole('USER')")
     public ApiResponse<List<ComplaintView>> myComplaints() { return service.myComplaints(); }
+    @GetMapping("/partner/complaints") @PreAuthorize("hasRole('PARTNER')")
+    public ApiResponse<List<ComplaintView>> partnerComplaints() { return service.partnerComplaints(); }
     @GetMapping("/manager/complaints") @PreAuthorize("hasAnyRole('MANAGER','ADMIN')")
     public ApiResponse<List<ComplaintView>> pending() { return service.pending(); }
     @PutMapping("/manager/complaints/{id}/resolve") @PreAuthorize("hasAnyRole('MANAGER','ADMIN')") @Transactional

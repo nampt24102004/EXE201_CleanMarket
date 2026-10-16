@@ -10,8 +10,9 @@ public interface SupplierService {
     ApiResponse<SupplierView> mine();
     ApiResponse<SupplierView> updateApplication(ProfileRequest request);
     ApiResponse<SupplierView> updateProfile(ProfileRequest request);
-    ApiResponse<DocumentView> uploadDocument(String type, String documentName, MultipartFile file);
-    ApiResponse<DocumentView> uploadPartnerDocument(String type, String documentName, MultipartFile file);
+    ApiResponse<DocumentView> uploadDocument(String type, String documentName, java.time.LocalDate expiryDate, MultipartFile file);
+    ApiResponse<DocumentView> uploadPartnerDocument(String type, String documentName, java.time.LocalDate expiryDate, MultipartFile file);
+    ApiResponse<SupplierView> deleteDocument(Long documentId);
     ApiResponse<SupplierView> resubmit();
     ApiResponse<List<SupplierView>> list(String status);
     ApiResponse<SupplierView> detail(Long id);

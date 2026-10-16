@@ -95,7 +95,11 @@ import org.springframework.transaction.annotation.Transactional;
     @Transactional public ApiResponse<UserView> role(Long id, @Valid RoleRequest request) {
         String role = request.role().trim().toUpperCase(Locale.ROOT);
         if (Arrays.stream(UserRole.values()).noneMatch(value -> value.name().equals(role))) throw BusinessException.bad("INVALID_ROLE", "Vai trò không hợp lệ");
-        UserAccount target = target(id); String before = target.getRole(); target.setRole(role); users.save(target);
+        UserAccount target = target(id);
+        // PARTNER is granted by approving a supplier profile; without one every partner screen and API has nothing to work on.
+        if (UserRole.PARTNER.name().equals(role) && suppliers.findByOwnerId(id).filter(s -> "APPROVED".equals(s.getStatus())).isEmpty())
+            throw BusinessException.bad("PARTNER_REQUIRES_SUPPLIER", "Chỉ cấp quyền PARTNER khi tài khoản có hồ sơ nhà cung cấp đã được duyệt");
+        String before = target.getRole(); target.setRole(role); users.save(target);
         // Staff roles also live in role assignments; drop the ones the admin is taking away so they stop granting access.
         List<UserRoleAssignment> revoked = assignments.findByUserId(id).stream()
             .filter(a -> STAFF_ROLES.contains(a.getRole().getName().toUpperCase(Locale.ROOT)) && !a.getRole().getName().equalsIgnoreCase(role)).toList();

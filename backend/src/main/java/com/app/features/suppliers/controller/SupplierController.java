@@ -21,12 +21,16 @@ public class SupplierController {
     @PutMapping("/api/supplier-applications/me") @PreAuthorize("hasRole('USER')")
     public ApiResponse<SupplierView> update(@Valid @RequestBody ProfileRequest request){return service.updateApplication(request);}
     @PostMapping(value="/api/supplier-applications/me/documents",consumes="multipart/form-data") @PreAuthorize("hasRole('USER')")
-    public ApiResponse<DocumentView> upload(@RequestParam String documentType,@RequestParam(required=false) String documentName,@RequestPart MultipartFile file){return service.uploadDocument(documentType,documentName,file);}
+    public ApiResponse<DocumentView> upload(@RequestParam String documentType,@RequestParam(required=false) String documentName,@RequestParam(required=false) @org.springframework.format.annotation.DateTimeFormat(iso=org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate expiryDate,@RequestPart MultipartFile file){return service.uploadDocument(documentType,documentName,expiryDate,file);}
+    @DeleteMapping("/api/supplier-applications/me/documents/{documentId}") @PreAuthorize("hasRole('USER')")
+    public ApiResponse<SupplierView> deleteDocument(@PathVariable Long documentId){return service.deleteDocument(documentId);}
     @PostMapping("/api/supplier-applications/me/resubmit") @PreAuthorize("hasRole('USER')")
     public ApiResponse<SupplierView> resubmit(){return service.resubmit();}
     @PutMapping("/api/partner/supplier-profile") public ApiResponse<SupplierView> profile(@Valid @RequestBody ProfileRequest request){return service.updateProfile(request);}
     @PostMapping(value="/api/partner/supplier-profile/documents",consumes="multipart/form-data") @PreAuthorize("hasRole('PARTNER')")
-    public ApiResponse<DocumentView> uploadPartnerDocument(@RequestParam String documentType,@RequestParam(required=false) String documentName,@RequestPart MultipartFile file){return service.uploadPartnerDocument(documentType,documentName,file);}
+    public ApiResponse<DocumentView> uploadPartnerDocument(@RequestParam String documentType,@RequestParam(required=false) String documentName,@RequestParam(required=false) @org.springframework.format.annotation.DateTimeFormat(iso=org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate expiryDate,@RequestPart MultipartFile file){return service.uploadPartnerDocument(documentType,documentName,expiryDate,file);}
+    @DeleteMapping("/api/partner/supplier-profile/documents/{documentId}") @PreAuthorize("hasRole('PARTNER')")
+    public ApiResponse<SupplierView> deletePartnerDocument(@PathVariable Long documentId){return service.deleteDocument(documentId);}
 
     @GetMapping("/api/manager/suppliers") public ApiResponse<List<SupplierView>> list(@RequestParam(defaultValue="ALL") String status){return service.list(status);}
     @GetMapping("/api/manager/suppliers/pending") public ApiResponse<List<SupplierView>> pending(){return service.list("PENDING");}

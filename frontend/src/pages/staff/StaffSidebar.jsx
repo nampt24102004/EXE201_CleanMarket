@@ -53,7 +53,7 @@ export default function StaffSidebar({
         },
         {
           key: 'products',
-          label: 'Duyệt nông sản mới',
+          label: 'Danh sách & Duyệt sản phẩm',
           icon: PackageCheck,
           badge: pendingCounts.products > 0 ? pendingCounts.products : null,
           badgeVariant: 'primary',

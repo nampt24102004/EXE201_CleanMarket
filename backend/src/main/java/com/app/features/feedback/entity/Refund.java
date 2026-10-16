@@ -17,4 +17,14 @@ public class Refund extends BaseEntity {
     @Column(nullable = false, length = 24) private String status = RefundStatus.REQUESTED.name();
     @Column(length = 1000) private String note;
     @Column(length = 120) private String providerRef;
+    // Where the customer wants the money; collected after staff approve the refund amount.
+    @Column(length = 120) private String bankName;
+    @Column(length = 30) private String bankAccountNumber;
+    @Column(length = 120) private String bankAccountHolder;
+    private java.time.Instant bankSubmittedAt;
+    /** Why staff sent the bank details back, shown to the customer. */
+    @Column(length = 500) private String bankReviewNote;
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "reviewed_by") private com.app.features.auth.entity.UserAccount reviewedBy;
+    private java.time.Instant reviewedAt;
+    private java.time.Instant completedAt;
 }

@@ -140,7 +140,7 @@ INSERT IGNORE INTO orders (id, user_id, order_code, subtotal, discount, shipping
   (1401, 101, 'CM-DEMO-COD-DELIVERED', 65000, 0, 0, 65000, 'DELIVERED', 'COD', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Đơn đã giao', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1402, 101, 'CM-DEMO-VNPAY-PENDING', 30000, 0, 0, 30000, 'CREATED', 'VNPAY', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Có thể gọi API tạo URL VNPAY', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1403, 101, 'CM-DEMO-MULTI-SUPPLIER', 70000, 0, 0, 70000, 'CREATED', 'COD', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Một đơn, hai nhà cung cấp', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1404, 101, 'CM-DEMO-VNPAY-PAID', 60000, 5000, 0, 55000, 'PAID', 'VNPAY', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Dữ liệu lịch sử có voucher', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1404, 101, 'CM-DEMO-VNPAY-PAID', 60000, 5000, 0, 55000, 'CONFIRMED', 'VNPAY', 'Nguyễn An', '0912345678', 'Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội', 'Dữ liệu lịch sử có voucher', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Phan don theo nha cung cap.
 INSERT IGNORE INTO supplier_orders (id, order_id, supplier_id, total_amount, status, created_at, updated_at) VALUES
@@ -177,7 +177,7 @@ INSERT IGNORE INTO order_status_history (id, order_id, status, actor_user_id, no
   (1903, 1402, 'CREATED', 101, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1904, 1403, 'CREATED', 101, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1905, 1404, 'CREATED', 101, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1906, 1404, 'PAID', NULL, 'VNPAY IPN đã xác thực', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1906, 1404, 'CONFIRMED', NULL, 'VNPAY IPN đã xác thực', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Danh gia tu don da giao.
 INSERT IGNORE INTO reviews (id, user_id, order_item_id, product_id, supplier_id, rating, comment, created_at, updated_at) VALUES

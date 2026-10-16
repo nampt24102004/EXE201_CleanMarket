@@ -33,5 +33,8 @@ public class Notification extends BaseEntity {
     @Column(nullable = false, length = 2000)
     private String message;
 
+    @Column(length = 300)
+    private String link;
+
     private Instant readAt;
 }

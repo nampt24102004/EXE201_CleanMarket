@@ -34,3 +34,6 @@ build/
 
 # Local secrets
 .env
+
+# Local development uploads (STORAGE_PROVIDER=local)
+uploads/
