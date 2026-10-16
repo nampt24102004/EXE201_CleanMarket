@@ -43,7 +43,7 @@ function HeroSection({
               <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
                 <span className="badge-chip">
                   <Sparkles size={14} className="text-warning me-1" />
-                  Sàn Nông Sản Sạch Trực Tiếp Từ Vườn
+                  Sàn Nông Sản &amp; Thực Phẩm Sạch Trực Tiếp Từ Vườn
                 </span>
                 <span className="organic-badge rounded-pill px-3 py-1 small">
                   100% Minh Bạch QR
