@@ -215,6 +215,8 @@ Nếu phát hiện vấn đề bảo mật, không đăng thông tin nhạy cả
 - Backend được đóng gói bằng Docker và chạy với profile `prod`.
 - MySQL production chạy trên Cloud SQL.
 - Mật khẩu và khóa dịch vụ được quản lý bằng Google Secret Manager.
+- Mỗi lần code được push hoặc merge vào `main`, workflow `Deploy production` tự động chạy test, build container, áp dụng migration mới, deploy Cloud Run, deploy Firebase Hosting và smoke-test website.
+- GitHub Actions xác thực với Google Cloud bằng OIDC/Workload Identity Federation; repository không lưu khóa service account dài hạn.
 
 Chi tiết cấu hình backend và API được trình bày trong [`backend/README.md`](backend/README.md).
 
