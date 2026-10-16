@@ -14,5 +14,6 @@ public class CustomerRefundController {
     private final RefundService service;
     public CustomerRefundController(RefundService service) { this.service = service; }
     @GetMapping("/my") public ApiResponse<List<RefundView>> mine() { return service.mine(); }
+    @GetMapping("/eligible-orders") public ApiResponse<List<EligibleOrder>> eligibleOrders() { return service.eligibleOrders(); }
     @PutMapping("/{id}/bank-info") public ApiResponse<RefundView> submitBankInfo(@PathVariable Long id, @Valid @RequestBody BankInfoRequest request) { return service.submitBankInfo(id, request); }
 }

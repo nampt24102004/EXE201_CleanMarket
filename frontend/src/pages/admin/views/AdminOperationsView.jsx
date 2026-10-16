@@ -146,17 +146,37 @@ export default function AdminOperationsView({ subSection = 'suppliers', onCatalo
     }
   }
 
-  const handleResolveComplaint = async (id) => {
+  // The resolution is sent to the customer, so staff write it themselves.
+  const handleResolveComplaint = async (item) => {
+    const id = item.id
+    const suggestion = item.requestType === 'REFUND' ? 'Từ chối hoàn tiền vì ' : 'Đã kiểm tra và đổi hàng mới cho khách'
+    const resolution = window.prompt('Phương án xử lý (khách hàng sẽ nhận được):', suggestion)
+    if (!resolution?.trim()) return
     setError('')
     setNotice('')
     try {
-      await api.put(`/api/manager/complaints/${id}/resolve`, {
-        resolution: 'Đã giải quyết và phản hồi khách hàng bởi Admin',
-      })
+      await api.put(`/api/manager/complaints/${id}/resolve`, { resolution: resolution.trim() })
       setNotice('Đã đánh dấu xử lý khiếu nại thành công!')
       await loadData()
     } catch (err) {
       setError(`Lỗi xử lý khiếu nại: ${err.message}`)
+    }
+  }
+
+  // Approving a refund amount starts the refund flow: the customer is asked for a bank account.
+  const handleApproveRefund = async (item) => {
+    const raw = window.prompt(`Số tiền hoàn cho đơn ${item.orderCode} (VNĐ):`, item.requestedAmount ? String(Number(item.requestedAmount)) : '')
+    if (!raw) return
+    const amount = Number(raw.replace(/[^\d]/g, ''))
+    if (!amount) return setError('Số tiền hoàn không hợp lệ.')
+    setError('')
+    setNotice('')
+    try {
+      await api.post(`/api/manager/complaints/${item.id}/refunds`, { amount, note: item.reason })
+      setNotice(`Đã duyệt hoàn ${formatCurrency(amount)} cho đơn ${item.orderCode}. Khách sẽ được yêu cầu gửi số tài khoản.`)
+      await loadData()
+    } catch (err) {
+      setError(`Lỗi duyệt hoàn tiền: ${err.message}`)
     }
   }
 
@@ -456,18 +476,28 @@ export default function AdminOperationsView({ subSection = 'suppliers', onCatalo
                 <div key={item.id} className="p-3 border rounded-3 bg-light">
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <strong className="text-dark">Đơn hàng #{item.orderCode}</strong>
-                    <Badge bg="warning" text="dark">{item.reason}</Badge>
+                    <div className="d-flex gap-1">
+                      {item.requestType === 'REFUND' && <Badge bg="danger">Đề nghị hoàn {formatCurrency(Number(item.requestedAmount || 0))}</Badge>}
+                      {item.requestType === 'EXCHANGE' && <Badge bg="info">Đổi hàng</Badge>}
+                      <Badge bg="warning" text="dark">{item.reason}</Badge>
+                    </div>
                   </div>
+                  {item.supplierName && <div className="small text-secondary mb-1">Nhà cung cấp: {item.supplierName}</div>}
                   <p className="text-secondary small mb-3">{item.description}</p>
-                  <Button
-                    variant="success"
-                    size="sm"
-                    className="d-flex align-items-center gap-1"
-                    onClick={() => handleResolveComplaint(item.id)}
-                  >
-                    <Check size={14} />
-                    <span>Đánh dấu đã giải quyết</span>
-                  </Button>
+                  <div className="d-flex flex-wrap gap-2">
+                    <Button
+                      variant={item.requestType === 'REFUND' ? 'outline-secondary' : 'success'}
+                      size="sm"
+                      className="d-flex align-items-center gap-1"
+                      onClick={() => handleResolveComplaint(item)}
+                    >
+                      <Check size={14} />
+                      <span>{item.requestType === 'REFUND' ? 'Từ chối / xử lý khác' : 'Đánh dấu đã giải quyết'}</span>
+                    </Button>
+                    <Button variant={item.requestType === 'REFUND' ? 'danger' : 'outline-danger'} size="sm" onClick={() => handleApproveRefund(item)}>
+                      Duyệt hoàn tiền
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

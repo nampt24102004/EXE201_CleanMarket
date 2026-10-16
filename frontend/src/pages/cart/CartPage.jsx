@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { api } from '../../services/apiClient'
 import { Button, Card, Col, Container, Image, ListGroup, Row, Stack } from 'react-bootstrap'
 import QuantitySelector from '../../components/product/QuantitySelector'
 import formatCurrency from '../../utils/formatCurrency'
@@ -16,7 +18,17 @@ function CartPage({
     0
   )
 
-  const isFreeShip = totalAmount >= 200000
+  // Free-shipping thresholds are set per delivery zone by admins; show the lowest one, the exact fee comes at checkout.
+  const [minThreshold, setMinThreshold] = useState(null)
+  useEffect(() => {
+    let active = true
+    api.get('/api/checkout/shipping-zones').then((zones) => {
+      const values = (zones || []).map((z) => Number(z.freeShippingThreshold)).filter((v) => v > 0)
+      if (active && values.length) setMinThreshold(Math.min(...values))
+    }).catch(() => {})
+    return () => { active = false }
+  }, [])
+  const isFreeShip = minThreshold != null && totalAmount >= minThreshold
 
   return (
     <Container className="py-4 py-md-5">
@@ -81,9 +93,11 @@ function CartPage({
                 >
                   <Truck size={20} className={isFreeShip ? 'text-success' : 'text-muted'} />
                   <span className="small fw-semibold">
-                    {isFreeShip
-                      ? '🎉 Chúc mừng! Đơn hàng của bạn đủ điều kiện miễn phí vận chuyển 2H.'
-                      : `Mua thêm ${formatCurrency(200000 - totalAmount)} để được Miễn phí giao hàng 2 giờ.`}
+                    {minThreshold == null
+                      ? 'Phí giao hàng được tính theo khu vực ở bước thanh toán.'
+                      : isFreeShip
+                        ? `🎉 Đơn hàng đạt ngưỡng miễn phí giao hàng của khu vực gần nhất (từ ${formatCurrency(minThreshold)}). Phí chính xác hiển thị ở bước thanh toán.`
+                        : `Mua thêm ${formatCurrency(minThreshold - totalAmount)} để được miễn phí giao hàng (áp dụng từ ${formatCurrency(minThreshold)}, tùy khu vực).`}
                   </span>
                 </div>
 

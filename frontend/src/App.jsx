@@ -22,6 +22,7 @@ import AdminPage from './pages/admin/AdminPage'
 import StaffPage from './pages/staff/StaffPage'
 import PartnerPage from './pages/partner/PartnerPage'
 import { MyOrdersPage, OrderDetailPage, PaymentResultPage, ProfilePage } from './pages/user/UserPages'
+import RefundRequestPage from './pages/refunds/RefundRequestPage'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PayOSPaymentPage from './pages/payment/PayOSPaymentPage'
 import SupplierRegistrationPage from './pages/supplier-registration/SupplierRegistrationPage'
@@ -107,6 +108,10 @@ function AppContent() {
   const [paymentMethod, setPaymentMethod] = useState('cod')
   const [validationErrors, setValidationErrors] = useState([])
   const [placedOrder, setPlacedOrder] = useState(null)
+  // True between placing an order and leaving /checkout, so the emptied cart does not bounce the customer back to /cart.
+  const [leavingCheckout, setLeavingCheckout] = useState(false)
+  // The cart arrives asynchronously; until it has, an empty cart does not mean "nothing to check out" (e.g. F5 on /checkout).
+  const [cartLoaded, setCartLoaded] = useState(false)
   const [catalogLoading, setCatalogLoading] = useState(true)
   const [apiError, setApiError] = useState('')
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false)
@@ -142,7 +147,7 @@ function AppContent() {
           supplierName: item.supplierName, image: '',
         },
       })))
-    } catch (caught) { showError(caught) }
+    } catch (caught) { showError(caught) } finally { setCartLoaded(true) }
   }, [products, showError, hasRole])
 
   const loadOrders = useCallback(async () => {
@@ -177,6 +182,9 @@ function AppContent() {
     })
   }, [loadCart, loadOrders, products.length, user, hasRole])
   useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
+  useEffect(() => {
+    if (location.pathname !== '/checkout') void Promise.resolve().then(() => setLeavingCheckout(false))
+  }, [location.pathname])
 
   const selectProduct = (product) => { setQuantity(stepFor(product)); navigate(`/products/${product.id}`) }
 
@@ -211,6 +219,7 @@ function AppContent() {
   const goCheckout = () => navigate(hasRole('USER') ? '/checkout' : '/login', { state: { from: '/checkout' } })
   const buyNow = async (product, value) => { await addToCart(product, value); if (hasRole('USER')) navigate('/checkout') }
 
+  // checkout comes from CheckoutPage: the address including the chosen zone, and the voucher codes shown in the quote.
   const confirmOrder = async (checkout = {}) => {
     const shippingAddress = checkout.shippingAddress?.trim() || customerInfo.address.trim()
     const errors = []
@@ -236,9 +245,11 @@ function AppContent() {
       })
       const order = normalizeOrder(result, products, user.email)
       setPlacedOrder(order)
+      setLeavingCheckout(true)
       setOrders((current) => [order, ...current])
-      setCartItems([])
       setValidationErrors([])
+      // Leave /checkout before emptying the cart: an empty cart makes /checkout redirect to /cart,
+      // which would otherwise win over the navigation to the success or payment page.
       if (paymentMethod === 'payos') {
         try {
           const payment = await api.post('/api/payments/payos/create', { orderId: order.id })
@@ -248,6 +259,7 @@ function AppContent() {
           navigate(`/payment/payos?orderId=${order.id}`)
         }
       } else navigate('/order-success')
+      setCartItems([])
     } catch (caught) {
       showError(caught)
     } finally {
@@ -305,7 +317,7 @@ function AppContent() {
       <Route path="/trace/:traceCode" element={<TracePage />} />
       <Route path="/login" element={<AuthPage />} /><Route path="/register" element={<AuthPage registerMode />} /><Route path="/verify-email" element={<VerifyEmailPage />} /><Route path="/forgot-password" element={<ForgotPasswordPage />} /><Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/cart" element={<CartPage cartItems={cartItems} onUpdateQuantity={updateCart} onRemoveItem={removeCartItem} onCheckout={goCheckout} onOpenProducts={() => navigate('/products')} />} />
-      <Route path="/checkout" element={protect(['USER'], cartItems.length ? <CheckoutPage cartItems={cartItems} customerInfo={customerInfo} paymentMethod={paymentMethod} validationErrors={validationErrors} submitting={checkoutSubmitting} onCustomerInfoChange={setCustomerInfo} onPaymentMethodChange={setPaymentMethod} onConfirmOrder={confirmOrder} /> : <Navigate to="/cart" replace />)} />
+      <Route path="/checkout" element={protect(['USER'], cartItems.length ? <CheckoutPage cartItems={cartItems} customerInfo={customerInfo} paymentMethod={paymentMethod} validationErrors={validationErrors} submitting={checkoutSubmitting} onCustomerInfoChange={setCustomerInfo} onPaymentMethodChange={setPaymentMethod} onConfirmOrder={confirmOrder} /> : leavingCheckout || !cartLoaded ? null : <Navigate to="/cart" replace />)} />
       <Route path="/order-success" element={protect(['USER'], placedOrder ? <OrderSuccessPage order={placedOrder} onBackHome={() => navigate('/orders')} /> : <Navigate to="/orders" replace />)} />
       <Route path="/payment-result" element={protect(['USER'], <PaymentResultPage orders={orders} />)} />
       <Route path="/payment/payos" element={protect(['USER'], <PayOSPaymentPage />)} />
@@ -313,6 +325,7 @@ function AppContent() {
       <Route path="/payment/cancel" element={protect(['USER'], <PayOSPaymentPage returnMode />)} />
       <Route path="/orders" element={protect(['USER'], <MyOrdersPage orders={orders} />)} />
       <Route path="/orders/:orderCode" element={protect(['USER'], <OrderDetailPage orders={orders} onOrdersChanged={loadOrders} />)} />
+      <Route path="/refunds" element={protect(['USER'], <RefundRequestPage />)} />
       <Route path="/profile" element={protect(['USER', 'PARTNER', 'MANAGER', 'ADMIN'], <ProfilePage />)} />
       <Route path="/partner/register" element={protect(['USER'], <SupplierRegistrationPage />)} />
       <Route path="/403" element={<Container className="py-5"><Alert variant="danger">Bạn không có quyền truy cập khu vực này.</Alert></Container>} />

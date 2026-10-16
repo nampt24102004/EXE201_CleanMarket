@@ -28,7 +28,7 @@ function Header({ cartCount }) {
               <Sparkles size={12} className="me-1 inline-block" />
               Ưu đãi hôm nay
             </span>
-            <span>Miễn phí vận chuyển cho đơn từ 200.000₫ • Cam kết 100% tươi sạch chuẩn VietGAP</span>
+            <span>Miễn phí vận chuyển theo ngưỡng từng khu vực • Cam kết 100% tươi sạch chuẩn VietGAP</span>
           </div>
           <div className="d-flex align-items-center gap-3 text-white-50 small">
             <span className="d-flex align-items-center gap-1 text-white">
@@ -76,6 +76,15 @@ function Header({ cartCount }) {
                   {hasRole('PARTNER') || hasRole('MANAGER') || hasRole('ADMIN')
                     ? 'Bảng điều khiển'
                     : 'Đơn mua của tôi'}
+                </Nav.Link>
+              )}
+              {user && hasRole('USER') && !hasRole('PARTNER') && !hasRole('MANAGER') && !hasRole('ADMIN') && (
+                <Nav.Link
+                  as={Link}
+                  to="/refunds"
+                  className={`nav-link-custom ${location.pathname.startsWith('/refunds') ? 'active' : ''}`}
+                >
+                  Hoàn tiền
                 </Nav.Link>
               )}
               {user && hasRole('USER') && !hasRole('PARTNER') && (

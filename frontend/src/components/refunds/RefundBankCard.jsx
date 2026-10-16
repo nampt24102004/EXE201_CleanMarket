@@ -6,8 +6,8 @@ import { refundStatus } from '../../utils/refundStatus'
 
 const empty = { bankName: '', accountNumber: '', accountHolder: '' }
 
-// Refunds of one order on the customer's order page, with the form to send the receiving bank account.
-export default function RefundBankCard({ orderCode }) {
+// The customer's refunds (one order's when orderCode is given), with the form to send the receiving bank account.
+export default function RefundBankCard({ orderCode, reloadKey = 0 }) {
   const [refunds, setRefunds] = useState([])
   const [forms, setForms] = useState({})
   const [error, setError] = useState('')
@@ -16,12 +16,12 @@ export default function RefundBankCard({ orderCode }) {
 
   const load = useCallback(async () => {
     try {
-      const mine = (await api.get('/api/refunds/my')).filter((r) => r.orderCode === orderCode)
+      const mine = (await api.get('/api/refunds/my')).filter((r) => !orderCode || r.orderCode === orderCode)
       setRefunds(mine)
       setForms(Object.fromEntries(mine.map((r) => [r.id, { bankName: r.bankName || '', accountNumber: r.bankAccountNumber || '', accountHolder: r.bankAccountHolder || '' }])))
     } catch { /* No refunds or not a customer: nothing to show. */ }
   }, [orderCode])
-  useEffect(() => { void Promise.resolve().then(load) }, [load])
+  useEffect(() => { void Promise.resolve().then(load) }, [load, reloadKey])
 
   if (!refunds.length) return null
 
@@ -48,7 +48,7 @@ export default function RefundBankCard({ orderCode }) {
         return (
           <div key={r.id} className="border rounded-3 p-3 mb-2">
             <div className="d-flex justify-content-between align-items-center mb-2">
-              <strong>{formatCurrency(Number(r.amount))}</strong>
+              <strong>{formatCurrency(Number(r.amount))}{!orderCode && <span className="text-muted fw-normal small ms-2">Đơn {r.orderCode}</span>}</strong>
               <Badge bg={color}>{label}</Badge>
             </div>
             {r.bankReviewNote && r.status === 'REQUESTED' && <Alert variant="warning" className="py-2 small">Tài khoản trước chưa hợp lệ: {r.bankReviewNote}</Alert>}

@@ -256,7 +256,7 @@ function HomePage({ products = [], suppliers = [], onSelectProduct, onAddToCart,
                 </div>
                 <div className="d-flex align-items-center justify-content-between">
                   <span className="fw-semibold text-dark small">Miễn phí giao hàng:</span>
-                  <span className="text-success fw-bold small">Đơn từ 200.000đ</span>
+                  <span className="text-success fw-bold small">Theo ngưỡng từng khu vực</span>
                 </div>
               </div>
               <div className="mt-auto pt-2 border-top">

@@ -33,8 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service @Transactional(readOnly = true)
 public class FeedbackServiceImpl implements FeedbackService {
-    private final ReviewRepository reviews; private final OrderItemRepository items; private final OrderRepository orders; private final ComplaintRepository complaints; private final PaymentRepository payments; private final RefundRepository refunds; private final CurrentUser current; private final AuditService audit; private final com.app.features.notifications.service.NotificationService notifications; private final com.app.features.orders.repository.SupplierOrderRepository supplierOrders;
-    public FeedbackServiceImpl(ReviewRepository reviews, OrderItemRepository items, OrderRepository orders, ComplaintRepository complaints, PaymentRepository payments, RefundRepository refunds, CurrentUser current, AuditService audit, com.app.features.notifications.service.NotificationService notifications, com.app.features.orders.repository.SupplierOrderRepository supplierOrders) { this.reviews = reviews; this.items = items; this.orders = orders; this.complaints = complaints; this.payments = payments; this.refunds = refunds; this.current = current; this.audit = audit; this.notifications = notifications; this.supplierOrders = supplierOrders; }
+    private final ReviewRepository reviews; private final OrderItemRepository items; private final OrderRepository orders; private final ComplaintRepository complaints; private final PaymentRepository payments; private final RefundRepository refunds; private final CurrentUser current; private final AuditService audit; private final com.app.features.notifications.service.NotificationService notifications; private final com.app.features.orders.repository.SupplierOrderRepository supplierOrders; private final com.app.features.auth.repository.UserRepository users;
+    public FeedbackServiceImpl(ReviewRepository reviews, OrderItemRepository items, OrderRepository orders, ComplaintRepository complaints, PaymentRepository payments, RefundRepository refunds, CurrentUser current, AuditService audit, com.app.features.notifications.service.NotificationService notifications, com.app.features.orders.repository.SupplierOrderRepository supplierOrders, com.app.features.auth.repository.UserRepository users) { this.users = users; this.reviews = reviews; this.items = items; this.orders = orders; this.complaints = complaints; this.payments = payments; this.refunds = refunds; this.current = current; this.audit = audit; this.notifications = notifications; this.supplierOrders = supplierOrders; }
     public ApiResponse<List<ReviewView>> productReviews(Long productId) { return ApiResponse.ok(reviews.findByOrderItemProductId(productId).stream().map(this::review).toList()); }
     @Transactional public ApiResponse<ReviewView> review(@Valid ReviewRequest request) {
         UserAccount user = current.get(); OrderItem item = items.findById(request.orderItemId()).orElseThrow(() -> BusinessException.missing("Mục đơn hàng"));
@@ -47,11 +47,28 @@ public class FeedbackServiceImpl implements FeedbackService {
         if ("CANCELLED".equals(order.getStatus())) throw BusinessException.bad("ORDER_CANCELLED", "Không thể khiếu nại đơn hàng đã hủy");
         if (complaints.existsByOrderIdAndStatus(order.getId(), "PENDING")) throw BusinessException.conflict("COMPLAINT_PENDING", "Đơn hàng đã có khiếu nại đang chờ xử lý");
         Complaint c = new Complaint(); c.setUser(user); c.setOrder(order); c.setReason(request.reason().trim()); c.setDescription(request.description().trim());
+        String type = request.requestType() == null || request.requestType().isBlank() ? "OTHER" : request.requestType().trim().toUpperCase(java.util.Locale.ROOT);
+        if (!List.of("EXCHANGE", "REFUND", "OTHER").contains(type)) throw BusinessException.bad("INVALID_REQUEST_TYPE", "Loại yêu cầu không hợp lệ");
+        c.setRequestType(type);
+        if ("REFUND".equals(type)) {
+            // A refund can only be asked for money actually received, minus what is already being or has been refunded.
+            BigDecimal refundable = refundableAmount(order.getId());
+            if (refundable.signum() <= 0) throw BusinessException.bad("NOTHING_TO_REFUND", "Đơn hàng chưa thanh toán hoặc đã được hoàn đủ tiền");
+            if (request.requestedAmount() == null || request.requestedAmount().signum() <= 0) throw BusinessException.bad("INVALID_REFUND_AMOUNT", "Vui lòng nhập số tiền muốn hoàn");
+            if (request.requestedAmount().compareTo(refundable) > 0) throw BusinessException.bad("REFUND_TOO_LARGE", "Số tiền hoàn tối đa là " + refundable.toPlainString() + "đ");
+            c.setRequestedAmount(request.requestedAmount());
+        }
         if (request.supplierOrderId() != null) c.setSupplierOrder(supplierOrders.findById(request.supplierOrderId())
             .filter(part -> part.getOrder().getId().equals(order.getId())).orElseThrow(() -> BusinessException.bad("INVALID_SUPPLIER_ORDER", "Nhà cung cấp không thuộc đơn hàng này")));
+        if (c.getSupplierOrder() != null && c.getRequestedAmount() != null && c.getRequestedAmount().compareTo(c.getSupplierOrder().getTotalAmount()) > 0)
+            throw BusinessException.bad("REFUND_TOO_LARGE", "Số tiền hoàn vượt giá trị phần đơn của nhà cung cấp này");
         complaints.save(c);
         for (var part : involvedParts(c)) notifications.notify(part.getSupplier().getOwner(), com.app.features.notifications.enums.NotificationType.ORDER,
             "Khiếu nại mới về đơn " + order.getOrderCode(), "Khách hàng phản ánh: " + c.getReason() + " - " + c.getDescription(), "/partner/orders");
+        if ("REFUND".equals(c.getRequestType()))
+            for (UserAccount staff : users.findByRoleInAndLockedFalse(List.of("MANAGER", "ADMIN")))
+                notifications.notify(staff, com.app.features.notifications.enums.NotificationType.PAYMENT, "Yêu cầu hoàn tiền đơn " + order.getOrderCode(),
+                    user.getFullName() + " đề nghị hoàn " + c.getRequestedAmount().toPlainString() + "đ: " + c.getReason() + ".", "/manager/complaints");
         return ApiResponse.ok(complaint(c));
     }
     public ApiResponse<List<ComplaintView>> myComplaints() { return ApiResponse.ok(complaints.findByUserIdOrderByCreatedAtDesc(current.get().getId()).stream().map(this::complaint).toList()); }
@@ -71,6 +88,8 @@ public class FeedbackServiceImpl implements FeedbackService {
         BigDecimal requested = refunds.findByPaymentId(paid.getId()).stream().map(Refund::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         if (requested.add(request.amount()).compareTo(paid.getAmount()) > 0) throw BusinessException.bad("REFUND_TOO_LARGE", "Tổng số tiền hoàn vượt giá trị đơn hàng");
         Refund refund = new Refund(); refund.setComplaint(c); refund.setPayment(paid); refund.setAmount(request.amount()); refund.setNote(request.note()); refunds.save(refund); audit.record(current.get(), "REFUND_REQUEST", "Refund", refund.getId(), "Chờ xử lý thủ công");
+        // Approving a customer's refund request answers it, so it no longer waits in the complaint queue.
+        if ("REFUND".equals(c.getRequestType()) && "PENDING".equals(c.getStatus())) { c.setStatus("RESOLVED"); c.setResolution("Duyệt hoàn " + refund.getAmount().toPlainString() + "đ"); }
         notifications.notify(c.getUser(), com.app.features.notifications.enums.NotificationType.PAYMENT, "Đơn " + c.getOrder().getOrderCode() + " được duyệt hoàn tiền",
             "CleanMarket đã duyệt hoàn " + refund.getAmount().toPlainString() + "đ cho khiếu nại của bạn. Vui lòng vào trang đơn hàng để gửi số tài khoản nhận tiền.", "/orders/" + c.getOrder().getOrderCode());
         return ApiResponse.ok(new RefundView(refund.getId(), id, refund.getAmount(), refund.getStatus()));
@@ -80,7 +99,14 @@ public class FeedbackServiceImpl implements FeedbackService {
     private ComplaintView complaint(Complaint c) {
         var part = c.getSupplierOrder();
         return new ComplaintView(c.getId(), c.getOrder().getOrderCode(), c.getReason(), c.getDescription(), c.getStatus(), c.getResolution(),
-            part == null ? null : part.getId(), part == null ? null : part.getSupplier().getName(), c.getCreatedAt());
+            part == null ? null : part.getId(), part == null ? null : part.getSupplier().getName(), c.getCreatedAt(),
+            c.getOrder().getId(), c.getRequestType() == null ? "OTHER" : c.getRequestType(), c.getRequestedAmount());
+    }
+    /** Money received for the order that has not been refunded or promised back yet. */
+    private BigDecimal refundableAmount(Long orderId) {
+        return payments.findByOrderIdOrderByCreatedAtDesc(orderId).stream().filter(p -> List.of("PAID", "REFUNDED").contains(p.getStatus()))
+            .map(p -> p.getAmount().subtract(refunds.findByPaymentId(p.getId()).stream().map(Refund::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add)))
+            .reduce(BigDecimal.ZERO, BigDecimal::add).max(BigDecimal.ZERO);
     }
     /** The supplier parts a complaint concerns: the one it names, or every part of the order. */
     private List<com.app.features.orders.entity.SupplierOrder> involvedParts(Complaint c) {

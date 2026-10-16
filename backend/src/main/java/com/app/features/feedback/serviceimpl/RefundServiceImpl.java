@@ -28,7 +28,12 @@ import org.springframework.transaction.annotation.Transactional;
     private static final List<String> STAFF = List.of("MANAGER", "ADMIN");
     private final RefundRepository refunds; private final CurrentUser current; private final AuditService audit;
     private final NotificationService notifications; private final UserRepository users;
-    public RefundServiceImpl(RefundRepository refunds, CurrentUser current, AuditService audit, NotificationService notifications, UserRepository users) {
+    private final com.app.features.orders.repository.OrderRepository orders; private final com.app.features.payments.repository.PaymentRepository payments;
+    private final com.app.features.orders.repository.SupplierOrderRepository supplierOrders; private final com.app.features.feedback.repository.ComplaintRepository complaints;
+    public RefundServiceImpl(RefundRepository refunds, CurrentUser current, AuditService audit, NotificationService notifications, UserRepository users,
+            com.app.features.orders.repository.OrderRepository orders, com.app.features.payments.repository.PaymentRepository payments,
+            com.app.features.orders.repository.SupplierOrderRepository supplierOrders, com.app.features.feedback.repository.ComplaintRepository complaints) {
+        this.orders = orders; this.payments = payments; this.supplierOrders = supplierOrders; this.complaints = complaints;
         this.refunds = refunds; this.current = current; this.audit = audit; this.notifications = notifications; this.users = users;
     }
 
@@ -40,6 +45,25 @@ import org.springframework.transaction.annotation.Transactional;
 
     @Transactional(readOnly = true) public ApiResponse<List<RefundView>> mine() {
         return ApiResponse.ok(refunds.findByComplaintUserIdOrderByCreatedAtDesc(current.get().getId()).stream().map(this::view).toList());
+    }
+
+    /** Orders the customer can open a refund request for: money received, not fully refunded, no complaint still open. */
+    @Transactional(readOnly = true) public ApiResponse<List<EligibleOrder>> eligibleOrders() {
+        UserAccount me = current.get();
+        List<EligibleOrder> result = new ArrayList<>();
+        for (var order : orders.findByUserIdOrderByCreatedAtDesc(me.getId())) {
+            // Cancelled paid orders are refunded through LatePaymentRefunds, and complaints are not accepted for them.
+            if ("CANCELLED".equals(order.getStatus()) || complaints.existsByOrderIdAndStatus(order.getId(), "PENDING")) continue;
+            List<Payment> paid = payments.findByOrderIdOrderByCreatedAtDesc(order.getId()).stream().filter(p -> List.of("PAID", "REFUNDED").contains(p.getStatus())).toList();
+            BigDecimal paidAmount = paid.stream().map(Payment::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal promised = paid.stream().flatMap(p -> refunds.findByPaymentId(p.getId()).stream()).map(Refund::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal refundable = paidAmount.subtract(promised);
+            if (refundable.signum() <= 0) continue;
+            List<EligiblePart> parts = supplierOrders.findByOrderId(order.getId()).stream()
+                .map(p -> new EligiblePart(p.getId(), p.getSupplier().getName(), p.getTotalAmount())).toList();
+            result.add(new EligibleOrder(order.getId(), order.getOrderCode(), order.getStatus(), order.getCreatedAt(), paidAmount, refundable, parts));
+        }
+        return ApiResponse.ok(result);
     }
 
     @Transactional public ApiResponse<RefundView> submitBankInfo(Long id, @Valid BankInfoRequest request) {

@@ -406,9 +406,12 @@ export function OrderDetailPage({ orders = [], onOrdersChanged }) {
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
   const [reviewItemId, setReviewItemId] = useState('')
-  const [reason, setReason] = useState('Chất lượng sản phẩm')
+  const [reason, setReason] = useState('Chất lượng sản phẩm (dập nát, héo)')
   const [description, setDescription] = useState('')
   const [complaintPartId, setComplaintPartId] = useState('')
+  const [requestType, setRequestType] = useState('OTHER')
+  const [requestedAmount, setRequestedAmount] = useState('')
+  const [refundable, setRefundable] = useState(null)
   const [reviews, setReviews] = useState([])
   const [complaints, setComplaints] = useState([])
   const [notice, setNotice] = useState('')
@@ -416,8 +419,11 @@ export function OrderDetailPage({ orders = [], onOrdersChanged }) {
   const [submittingReview, setSubmittingReview] = useState(false)
   const [submittingComplaint, setSubmittingComplaint] = useState(false)
 
+  // Only delivered items this order has not reviewed yet (each order item can be reviewed once).
+  const reviewedItemIds = new Set(reviews.map((r) => r.orderItemId))
   const deliveredItems =
-    order?.supplierOrders?.filter((part) => part.status === 'DELIVERED').flatMap((part) => part.items) || []
+    (order?.supplierOrders?.filter((part) => part.status === 'DELIVERED').flatMap((part) => part.items) || [])
+      .filter((item) => !reviewedItemIds.has(item.id))
   const selectedReviewItemId = reviewItemId || String(deliveredItems[0]?.id || '')
 
   useEffect(() => {
@@ -426,9 +432,12 @@ export function OrderDetailPage({ orders = [], onOrdersChanged }) {
     Promise.all([
       Promise.all(productIds.map((id) => api.get(`/api/products/${id}/reviews`))),
       api.get('/api/complaints/my'),
+      api.get('/api/refunds/eligible-orders').catch(() => []),
     ])
-      .then(([reviewGroups, complaintData]) => {
+      .then(([reviewGroups, complaintData, eligible]) => {
         setReviews(reviewGroups.flat())
+        const match = eligible.find((item) => item.orderCode === orderCode)
+        setRefundable(match ? Number(match.refundable) : null)
         setComplaints(complaintData.filter((item) => item.orderCode === orderCode))
       })
       .catch((caught) => setError(caught.message))
@@ -506,9 +515,13 @@ export function OrderDetailPage({ orders = [], onOrdersChanged }) {
         reason,
         description,
         supplierOrderId: complaintPartId ? Number(complaintPartId) : null,
+        requestType,
+        requestedAmount: requestType === 'REFUND' ? Number(requestedAmount) : null,
       })
       setComplaints((current) => [created, ...current])
       setDescription('')
+      setRequestedAmount('')
+      setRequestType('OTHER')
       setNotice('Đã tiếp nhận phản hồi. Bộ phận hỗ trợ khách hàng sẽ liên hệ với bạn trong 24h.')
     } catch (caught) {
       setError(caught.message)
@@ -890,6 +903,30 @@ export function OrderDetailPage({ orders = [], onOrdersChanged }) {
                 </Form.Select>
               </Form.Group>
 
+              <Form.Group className="mb-2">
+                <Form.Label className="small fw-semibold">Bạn muốn</Form.Label>
+                <Form.Select className="rounded-3" value={requestType} onChange={(e) => setRequestType(e.target.value)}>
+                  <option value="OTHER">Chỉ phản ánh</option>
+                  <option value="EXCHANGE">Đổi hàng</option>
+                  {refundable > 0 && <option value="REFUND">Hoàn tiền</option>}
+                </Form.Select>
+              </Form.Group>
+              {requestType === 'REFUND' && refundable > 0 && (
+                <Form.Group className="mb-2">
+                  <Form.Label className="small fw-semibold">Số tiền đề nghị hoàn (đ)</Form.Label>
+                  <Form.Control
+                    required
+                    type="number"
+                    min={1}
+                    max={refundable}
+                    className="rounded-3"
+                    value={requestedAmount}
+                    onChange={(e) => setRequestedAmount(e.target.value)}
+                  />
+                  <Form.Text>Tối đa {formatCurrency(refundable)}</Form.Text>
+                </Form.Group>
+              )}
+
               <Form.Group className="mb-3">
                 <Form.Label className="small fw-semibold">Mô tả chi tiết</Form.Label>
                 <Form.Control
@@ -926,6 +963,8 @@ export function OrderDetailPage({ orders = [], onOrdersChanged }) {
                         {item.status === 'RESOLVED' ? 'Đã xử lý' : 'Đang xử lý'}
                       </Badge>
                     </div>
+                    {item.requestType === 'REFUND' && <div className="text-secondary">Đề nghị hoàn: {formatCurrency(Number(item.requestedAmount || 0))}</div>}
+                    {item.requestType === 'EXCHANGE' && <div className="text-secondary">Yêu cầu đổi hàng</div>}
                     {item.supplierName && <div className="text-secondary">Nhà cung cấp: {item.supplierName}</div>}
                     <div className="text-muted">{item.description}</div>
                     {item.resolution && <div className="text-success mt-1">Phương án: {item.resolution}</div>}

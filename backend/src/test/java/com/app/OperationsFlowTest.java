@@ -166,6 +166,43 @@ class OperationsFlowTest {
         assertEquals("REFUNDED", jdbc.queryForObject("select status from payments where order_id = ?", String.class, orderId));
     }
 
+    @Test void customerPicksAPaidOrderAndAsksForARefundAmount() throws Exception {
+        long orderId = order("COD", 2);
+        long partId = json.readTree(mvc.perform(get("/api/orders/" + orderId).session(buyerSession)).andReturn().getResponse().getContentAsString())
+            .path("data").path("supplierOrders").get(0).path("id").asLong();
+        MockHttpSession farm = login("farm-" + tag);
+        // COD money is only received on delivery, so the order is not refundable before that.
+        mvc.perform(get("/api/refunds/eligible-orders").session(buyerSession)).andExpect(jsonPath("$.data.length()").value(0));
+        for (String step : new String[] {"CONFIRMED", "SHIPPED", "DELIVERED"})
+            put(farm, "/api/partner/orders/" + partId + "/status", "{\"status\":\"" + step + "\"}").andExpect(status().isOk());
+
+        JsonNode eligible = json.readTree(mvc.perform(get("/api/refunds/eligible-orders").session(buyerSession)).andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString()).path("data");
+        assertEquals(1, eligible.size());
+        assertEquals(orderId, eligible.get(0).path("orderId").asLong());
+        account("staff-" + tag, "MANAGER");
+        long refundable = eligible.get(0).path("refundable").asLong();
+        String request = "{\"orderId\":" + orderId + ",\"reason\":\"Hàng hỏng\",\"description\":\"Rau úng\",\"requestType\":\"REFUND\",\"requestedAmount\":%d}";
+        mvc.perform(post("/api/complaints").with(csrf()).session(buyerSession).contentType(MediaType.APPLICATION_JSON).content(request.formatted(refundable + 1)))
+            .andExpect(status().isBadRequest());
+        long complaintId = json.readTree(mvc.perform(post("/api/complaints").with(csrf()).session(buyerSession).contentType(MediaType.APPLICATION_JSON).content(request.formatted(15000)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.requestType").value("REFUND")).andReturn().getResponse().getContentAsString()).path("data").path("id").asLong();
+        // An order with an open request is not offered again.
+        mvc.perform(get("/api/refunds/eligible-orders").session(buyerSession)).andExpect(jsonPath("$.data.length()").value(0));
+
+        MockHttpSession staff = login("staff-" + tag);
+        assertTrue(notifications.findByRecipientIdOrderByCreatedAtDesc(users.findByEmailIgnoreCase("staff-" + tag + "@example.test").orElseThrow().getId()).stream()
+            .anyMatch(n -> n.getTitle().startsWith("Yêu cầu hoàn tiền")));
+        mvc.perform(get("/api/manager/complaints").session(staff)).andExpect(jsonPath("$.data[?(@.id == " + complaintId + ")].requestedAmount").value(15000.0));
+        mvc.perform(post("/api/manager/complaints/" + complaintId + "/refunds").with(csrf()).session(staff).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"amount\":15000,\"note\":\"Hàng hỏng\"}")).andExpect(status().isOk());
+
+        // Approval answers the request; only the rest of the money can still be asked for.
+        assertEquals("RESOLVED", jdbc.queryForObject("select status from complaints where id = ?", String.class, complaintId));
+        mvc.perform(get("/api/refunds/eligible-orders").session(buyerSession)).andExpect(jsonPath("$.data[0].refundable").value((double) (refundable - 15000)));
+        mvc.perform(get("/api/refunds/my").session(buyerSession)).andExpect(jsonPath("$.data[0].status").value("REQUESTED"));
+    }
+
     @Autowired com.app.features.feedback.service.LatePaymentRefunds latePayments;
     @Autowired com.app.features.payments.repository.PaymentRepository paymentRepository;
     @Autowired org.springframework.transaction.PlatformTransactionManager transactionManager;

@@ -37,6 +37,11 @@ function CheckoutPage({
   // Saved addresses from the profile's address book; the default one fills an empty form once.
   const [savedAddresses, setSavedAddresses] = useState([])
   const applyAddress = (a) => onCustomerInfoChange({ ...customerInfo, fullName: a.recipientName, phone: a.phone, address: a.addressLine })
+  // Pick the delivery zone whose keywords appear in the saved address, so a saved address is ready to quote.
+  const zoneFor = (zones, addressLine) => {
+    const text = (addressLine || '').toLowerCase()
+    return zones.find((z) => [z.zoneName, ...(z.addressKeywords || '').split(',')].map((k) => k.trim().toLowerCase()).filter(Boolean).some((k) => text.includes(k)))
+  }
   useEffect(() => {
     let active = true
     api.get('/api/users/me/addresses').then((list) => {
@@ -83,14 +88,21 @@ function CheckoutPage({
     return () => clearTimeout(timer)
   }, [shippingAddress, platformCode, partnerCodes])
 
+  // Once zones are loaded, an address that came prefilled (address book or earlier order) selects its zone by itself.
+  useEffect(() => {
+    if (shippingZoneCode || !shippingZones.length || !customerInfo.address?.trim()) return
+    const zone = zoneFor(shippingZones, customerInfo.address)
+    if (zone) void Promise.resolve().then(() => setShippingZoneCode(zone.zoneCode))
+  }, [shippingZones, customerInfo.address, shippingZoneCode])
+
   const activeQuote = shippingAddress ? quote : null
   const formErrors = [...validationErrors, ...localErrors]
   const normalizeCode = (value) => value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 80)
 
+  // Keep the address the customer typed or picked from the address book; only the delivery zone changes.
   const changeZone = (code) => {
     setShippingZoneCode(code)
     setLocalErrors([])
-    onCustomerInfoChange({ ...customerInfo, address: '' })
   }
 
   const applyPlatformCode = () => {
@@ -161,7 +173,7 @@ function CheckoutPage({
                 defaultValue=""
                 onChange={(e) => {
                   const picked = savedAddresses.find((a) => String(a.id) === e.target.value)
-                  if (picked) applyAddress(picked)
+                  if (picked) { applyAddress(picked); const zone = zoneFor(shippingZones, picked.addressLine); if (zone) setShippingZoneCode(zone.zoneCode) }
                 }}
               >
                 <option value="" disabled>Chọn địa chỉ đã lưu trong sổ địa chỉ…</option>

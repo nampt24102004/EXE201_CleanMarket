@@ -8,6 +8,7 @@ import java.util.List;
 public interface RefundService {
     ApiResponse<List<RefundView>> list(String status);
     ApiResponse<List<RefundView>> mine();
+    ApiResponse<List<EligibleOrder>> eligibleOrders();
     ApiResponse<RefundView> submitBankInfo(Long id, @Valid BankInfoRequest request);
     ApiResponse<RefundView> approveBankInfo(Long id);
     ApiResponse<RefundView> rejectBankInfo(Long id, @Valid ReviewRequest request);

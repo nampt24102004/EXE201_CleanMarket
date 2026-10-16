@@ -15,19 +15,19 @@ public class TransactionalMailListener {
     private final MailService mail;
     public TransactionalMailListener(MailService mail) { this.mail = mail; }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @org.springframework.scheduling.annotation.Async("mailExecutor") @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void orderPlaced(OrderPlacedMailEvent event) {
         try { mail.sendOrderConfirmation(event); }
         catch (RuntimeException ex) { log.error("Không thể gửi email xác nhận đơn {}", event.orderCode(), ex); }
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @org.springframework.scheduling.annotation.Async("mailExecutor") @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void notice(com.app.features.notifications.dto.MailEventDto.NoticeMailEvent event) {
         try { mail.sendNotice(event); }
         catch (RuntimeException ex) { log.error("Không thể gửi email thông báo \"{}\" tới {}", event.title(), event.email(), ex); }
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @org.springframework.scheduling.annotation.Async("mailExecutor") @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void paymentSucceeded(PaymentSucceededMailEvent event) {
         try { mail.sendPaymentConfirmation(event); }
         catch (RuntimeException ex) { log.error("Không thể gửi email thanh toán đơn {}", event.orderCode(), ex); }
