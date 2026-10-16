@@ -5,6 +5,7 @@ import {
   CreditCard,
   Users,
   FolderTree,
+  Truck,
   Sliders,
   ClipboardList,
   Store,
@@ -63,6 +64,7 @@ export default function AdminSidebar({
       items: [
         { key: 'users', label: 'Tài khoản & Nhân sự', icon: Users },
         { key: 'categories', label: 'Danh mục nông sản', icon: FolderTree },
+        { key: 'shipping', label: 'Phí giao hàng', icon: Truck },
         { key: 'settings', label: 'Cấu hình hệ thống', icon: Sliders },
         { key: 'audit-logs', label: 'Nhật ký an toàn', icon: ClipboardList },
       ],

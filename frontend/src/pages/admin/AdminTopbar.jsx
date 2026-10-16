@@ -12,6 +12,7 @@ const sectionTitles = {
   'payments': 'Quản lý thanh toán & Đối soát PayOS',
   'users': 'Quản lý người dùng & Phân quyền nhân sự',
   'categories': 'Danh mục nông sản & Phân loại',
+  'shipping': 'Khu vực & Phí giao hàng',
   'settings': 'Cấu hình tham số hệ thống',
   'audit-logs': 'Nhật ký kiểm toán an toàn (Audit Logs)',
   'suppliers': 'Duyệt hồ sơ nhà cung cấp đối tác',

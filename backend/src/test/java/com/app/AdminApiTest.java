@@ -203,6 +203,29 @@ class AdminApiTest {
         mvc.perform(get("/api/admin/settings").session(admin)).andExpect(status().isOk()).andExpect(jsonPath("$.data[?(@.key=='support.email')].value").value("help@example.test"));
     }
 
+    @Autowired com.app.features.audit.repository.AuditRepository auditLogs;
+
+    @Test void adminManagesDeliveryZonesAndEachChangeIsAudited() throws Exception {
+        String code = ("UAT_" + tag).toUpperCase();
+        String zone = "{\"zoneCode\":\"" + code + "\",\"zoneName\":\"Vùng " + tag + "\",\"addressKeywords\":\"uat " + tag + "\",\"shippingFee\":25000,\"freeShippingThreshold\":%s,\"active\":%s}";
+        mvc.perform(post("/api/admin/shipping-zones").with(csrf()).session(admin).contentType(MediaType.APPLICATION_JSON).content(zone.formatted("-1", "true")))
+            .andExpect(status().isBadRequest());
+        long id = body(mvc.perform(post("/api/admin/shipping-zones").with(csrf()).session(admin).contentType(MediaType.APPLICATION_JSON).content(zone.formatted("300000", "true")))
+            .andExpect(status().isOk())).path("data").path("id").asLong();
+        // The same code cannot be used twice, whatever its case.
+        mvc.perform(post("/api/admin/shipping-zones").with(csrf()).session(admin).contentType(MediaType.APPLICATION_JSON).content(zone.formatted("null", "true").replace(code, code.toLowerCase())))
+            .andExpect(status().isConflict());
+
+        put(admin, "/api/admin/shipping-zones/" + id, zone.formatted("null", "false")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.active").value(false)).andExpect(jsonPath("$.data.freeShippingThreshold").doesNotExist());
+        mvc.perform(get("/api/admin/shipping-zones").session(admin)).andExpect(jsonPath("$.data[?(@.zoneCode=='" + code + "')].active").value(false));
+        String buyerName = "buyer-" + tag; account(buyerName, "USER");
+        mvc.perform(get("/api/checkout/shipping-zones").session(login(buyerName))).andExpect(jsonPath("$.data[?(@.zoneCode=='" + code + "')]").isEmpty());
+
+        var actions = auditLogs.findAll().stream().filter(a -> "ShippingZone".equals(a.getEntityType()) && Long.valueOf(id).equals(a.getEntityId())).map(a -> a.getAction()).toList();
+        assertTrue(actions.containsAll(java.util.List.of("SHIPPING_ZONE_CREATE", "SHIPPING_ZONE_UPDATE")), actions.toString());
+    }
+
     @Test void nonAdminsCannotUseAdminApis() throws Exception {
         account("plain-" + tag, "USER");
         MockHttpSession plain = login("plain-" + tag);

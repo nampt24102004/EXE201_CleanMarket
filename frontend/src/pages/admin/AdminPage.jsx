@@ -8,6 +8,7 @@ import AdminRevenueView from './views/AdminRevenueView'
 import AdminPaymentsView from './views/AdminPaymentsView'
 import AdminUsersView from './views/AdminUsersView'
 import AdminCategoriesView from './views/AdminCategoriesView'
+import AdminShippingView from './views/AdminShippingView'
 import AdminSettingsView from './views/AdminSettingsView'
 import AdminAuditView from './views/AdminAuditView'
 import AdminOperationsView from './views/AdminOperationsView'
@@ -62,6 +63,8 @@ export default function AdminPage({ onCatalogChanged }) {
     mainView = <AdminUsersView />
   } else if (section === 'categories') {
     mainView = <AdminCategoriesView onCatalogChanged={onCatalogChanged} />
+  } else if (section === 'shipping') {
+    mainView = <AdminShippingView />
   } else if (section === 'settings') {
     mainView = <AdminSettingsView />
   } else if (section === 'audit-logs') {
