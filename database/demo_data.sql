@@ -99,7 +99,7 @@ INSERT IGNORE INTO products (id, supplier_id, category_id, name, description, pr
   (701, 501, (SELECT id FROM categories WHERE name = 'Củ quả'), 'Cà rốt', 'Cà rốt tươi từ vùng trồng Hòa Lạc - Thạch Thất, Hà Nội.', 25000, 'kg', 'https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=900&q=80', 100, 'Thạch Hòa, Thạch Thất, Hà Nội', 'APPROVED', 'ACTIVE', 'CM-CERT-001', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (702, 501, (SELECT id FROM categories WHERE name = 'Rau lá'), 'Rau cải xanh', 'Rau cải xanh thu hoạch trong ngày tại khu vực Hòa Lạc - Thạch Thất.', 15000, 'kg', 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=900&q=80', 80, 'Thạch Hòa, Thạch Thất, Hà Nội', 'APPROVED', 'ACTIVE', 'CM-CERT-002', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (703, 502, (SELECT id FROM categories WHERE name = 'Củ quả'), 'Cà chua', 'Cà chua từ vùng trồng Ba Vì, Hà Nội.', 30000, 'kg', 'https://images.unsplash.com/photo-1546094096-0df4bcaaa337?auto=format&fit=crop&w=900&q=80', 60, 'Ba Vì, Hà Nội', 'APPROVED', 'ACTIVE', 'CM-CERT-003', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (704, 502, (SELECT id FROM categories WHERE name = 'Trái cây'), 'Bưởi', 'Bưởi từ khu vực Ba Vì, Hà Nội, vị thanh và mọng nước.', 45000, 'kg', 'https://placehold.co/900x700?text=Buoi+Ba+Vi', 40, 'Ba Vì, Hà Nội', 'APPROVED', 'ACTIVE', 'CM-CERT-004', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (704, 502, (SELECT id FROM categories WHERE name = 'Trái cây'), 'Bưởi', 'Bưởi từ khu vực Ba Vì, Hà Nội, vị thanh và mọng nước.', 45000, 'kg', '/images/products/buoi.webp', 40, 'Ba Vì, Hà Nội', 'APPROVED', 'ACTIVE', 'CM-CERT-004', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (705, 502, (SELECT id FROM categories WHERE name = 'Rau lá'), 'Rau xà lách', 'Rau xà lách từ khu vực Ba Vì, Hà Nội, đang chờ Manager duyệt.', 22000, 'kg', 'https://images.unsplash.com/photo-1556801712-76c8eb07bbc9?auto=format&fit=crop&w=900&q=80', 20, 'Ba Vì, Hà Nội', 'PENDING', 'INACTIVE', NULL, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Anh san pham bo sung.
@@ -107,7 +107,7 @@ INSERT IGNORE INTO product_images (id, product_id, image_url, sort_order, create
   (801, 701, 'https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=900&q=80+1', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (802, 702, 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=900&q=80', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (803, 703, 'https://images.unsplash.com/photo-1546094096-0df4bcaaa337?auto=format&fit=crop&w=900&q=80+1', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (804, 704, 'https://placehold.co/900x700?text=Buoi+Ba+Vi', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (804, 704, '/images/products/buoi.webp', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Lo san pham va traceCode de mo trang QR.
 INSERT IGNORE INTO product_batches (id, product_id, batch_code, trace_code, farm_name, origin, harvest_date, packaging_date, expiry_date, quantity, certificate_no, status, created_at, updated_at) VALUES

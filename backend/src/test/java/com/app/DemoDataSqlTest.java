@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.support.EncodedResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
@@ -51,5 +52,20 @@ class DemoDataSqlTest {
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM refunds WHERE id = 2301", Integer.class));
         String hash = jdbc.queryForObject("SELECT password_hash FROM users WHERE id = 101", String.class);
         assertTrue(passwords.matches("Demo@123456", hash));
+
+        // Existing databases may still have the pomelo placeholder. Only that
+        // placeholder should be replaced; partner-supplied photos must survive.
+        String placeholder = "https://placehold.co/900x700?text=Buoi+Ba+Vi";
+        jdbc.update("UPDATE products SET image_url = ? WHERE id = 704", placeholder);
+        jdbc.update("UPDATE product_images SET image_url = ? WHERE product_id = 704", placeholder);
+        jdbc.update("UPDATE products SET image_url = 'https://example.com/custom.jpg' WHERE id = 703");
+        try (var connection = dataSource.getConnection()) {
+            var migration = new EncodedResource(new ClassPathResource("db/migration/V20261026__pomelo_product_image.sql"), StandardCharsets.UTF_8);
+            ScriptUtils.executeSqlScript(connection, migration);
+            ScriptUtils.executeSqlScript(connection, migration);
+        }
+        assertEquals("/images/products/buoi.webp", jdbc.queryForObject("SELECT image_url FROM products WHERE id = 704", String.class));
+        assertEquals("/images/products/buoi.webp", jdbc.queryForObject("SELECT image_url FROM product_images WHERE id = 804", String.class));
+        assertEquals("https://example.com/custom.jpg", jdbc.queryForObject("SELECT image_url FROM products WHERE id = 703", String.class));
     }
 }

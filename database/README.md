@@ -64,3 +64,9 @@ Các ảnh và tài liệu dùng URL placeholder; chúng chỉ phục vụ trìn
 ## Migration payOS
 
 Với database đã có dữ liệu, chạy một lần migrations/V2__payos_payment_fields.sql. Script chỉ thêm các cột mapping payOS và index tra cứu giao dịch, không xóa dữ liệu hiện có.
+
+## Ảnh sản phẩm Bưởi
+
+Ảnh minh họa Bưởi được lưu tại `frontend/public/images/products/buoi.webp` và phục vụ qua `/images/products/buoi.webp`. Các file seed đã sử dụng ảnh này. Migration `V20261026__pomelo_product_image.sql` thay URL placeholder `Buoi+Ba+Vi` trong sản phẩm và thư viện ảnh; Flyway tự chạy khi deploy production. Với database local đã có dữ liệu, chọn schema `cleanmarket_db` và chạy file cùng tên trong `database/migrations`.
+
+Ảnh được tạo bằng imagegen. Prompt và thông tin nguồn được ghi tại [product-images.md](../frontend/docs/product-images.md).
