@@ -48,7 +48,7 @@ export default function AdminPage({ onCatalogChanged }) {
       const orders = await loadAllAdminPages(api, '/api/manager/orders')
       setDemoTimeline(buildDemoTimeline(orders))
     } catch (err) {
-      setDemoError(err.message || 'Không thể tạo mốc thời gian mô phỏng.')
+      setDemoError(err.message || 'Không thể tải dữ liệu ngày.')
     } finally {
       setDemoLoading(false)
     }
@@ -169,15 +169,15 @@ export default function AdminPage({ onCatalogChanged }) {
           {demoError && showDemoDates && (
             <Alert variant="danger">
               <div>{demoError}</div>
-              <Button size="sm" variant="outline-danger" className="mt-2 me-2" onClick={loadDemoTimeline} disabled={demoLoading}>Thử tải lại ngày mô phỏng</Button>
-              <Button size="sm" variant="outline-secondary" className="mt-2" onClick={() => toggleDemoDates(false)}>Tắt ngày mô phỏng</Button>
+              <Button size="sm" variant="outline-danger" className="mt-2 me-2" onClick={loadDemoTimeline} disabled={demoLoading}>Thử tải lại ngày</Button>
+              <Button size="sm" variant="outline-secondary" className="mt-2" onClick={() => toggleDemoDates(false)}>Tắt chế độ ngày</Button>
             </Alert>
           )}
 
           {loading || (waitingForDemo && !demoError) ? (
             <div className="text-center py-5">
               <Spinner animation="border" variant="success" />
-              <div className="mt-2 text-secondary small">{waitingForDemo ? 'Đang tải ngày mô phỏng dùng chung...' : 'Đang khởi tạo không gian quản trị...'}</div>
+              <div className="mt-2 text-secondary small">{waitingForDemo ? 'Đang tải ngày dùng chung...' : 'Đang khởi tạo không gian quản trị...'}</div>
             </div>
           ) : (
             waitingForDemo ? null : mainView

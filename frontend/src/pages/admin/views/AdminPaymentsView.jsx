@@ -117,7 +117,7 @@ export default function AdminPaymentsView({ showDemoDates, onToggleDemoDates, de
         <Form.Check
           type="switch"
           id="admin-payment-demo-dates"
-          label={demoLoading ? 'Đang tải ngày mô phỏng...' : 'Ngày mô phỏng'}
+          aria-label={demoLoading ? 'Đang tải ngày' : 'Bật/tắt ngày mô phỏng'}
           checked={showDemoDates}
           onChange={(event) => onToggleDemoDates(event.target.checked)}
           disabled={demoLoading}
@@ -237,7 +237,7 @@ export default function AdminPaymentsView({ showDemoDates, onToggleDemoDates, de
                 <th>Cổng</th>
                 <th>Số tiền</th>
                 <th>Trạng thái</th>
-                <th>{showDemoDates ? 'Ngày mô phỏng' : 'Thời gian'}</th>
+                <th>{showDemoDates ? 'Ngày' : 'Thời gian'}</th>
                 <th>Hành động</th>
               </tr>
             </thead>
@@ -281,7 +281,7 @@ export default function AdminPaymentsView({ showDemoDates, onToggleDemoDates, de
                       {showDemoDates ? (
                         demoTimeline?.byOrderCode[item.orderCode] ? (
                           <div className="fw-semibold text-warning-emphasis">
-                            Mô phỏng: {demoTimeline.byOrderCode[item.orderCode].split('-').reverse().join('/')}
+                            Ngày: {demoTimeline.byOrderCode[item.orderCode].split('-').reverse().join('/')}
                           </div>
                         ) : '—'
                       ) : new Date(item.createdAt).toLocaleString('vi-VN')}
@@ -401,7 +401,7 @@ export default function AdminPaymentsView({ showDemoDates, onToggleDemoDates, de
               )}
               {showDemoDates && demoTimeline?.byOrderCode[selectedPayment.orderCode] && (
                 <div className="d-flex justify-content-between py-2 border-bottom">
-                  <span className="text-secondary">Ngày mô phỏng:</span>
+                  <span className="text-secondary">Ngày:</span>
                   <strong>{demoTimeline.byOrderCode[selectedPayment.orderCode].split('-').reverse().join('/')}</strong>
                 </div>
               )}

@@ -318,7 +318,7 @@ export default function AdminOrdersView({ showDemoDates = false, onToggleDemoDat
             <Form.Check
               type="switch"
               id="admin-demo-order-dates"
-              label={demoLoading ? 'Đang tải ngày mô phỏng...' : 'Ngày mô phỏng'}
+              aria-label={demoLoading ? 'Đang tải ngày' : 'Bật/tắt ngày mô phỏng'}
               checked={showDemoDates}
               onChange={(event) => onToggleDemoDates(event.target.checked)}
               disabled={demoLoading}
@@ -626,7 +626,7 @@ export default function AdminOrdersView({ showDemoDates = false, onToggleDemoDat
                   <th>Phí ship</th>
                   <th>Tổng thanh toán</th>
                   <th>Trạng thái</th>
-                  <th>{isAdmin && showDemoDates ? 'Ngày mô phỏng' : 'Thời gian'}</th>
+                  <th>{isAdmin && showDemoDates ? 'Ngày' : 'Thời gian'}</th>
                   <th className="text-end" style={{ width: 130 }}>
                     Thao tác
                   </th>
@@ -740,7 +740,7 @@ export default function AdminOrdersView({ showDemoDates = false, onToggleDemoDat
                         {isAdmin && showDemoDates ? (
                           demoTimeline?.byOrderId[item.id] ? (
                             <div className="fw-semibold text-warning-emphasis">
-                              Mô phỏng: {demoTimeline.byOrderId[item.id].split('-').reverse().join('/')}
+                              Ngày: {demoTimeline.byOrderId[item.id].split('-').reverse().join('/')}
                             </div>
                           ) : '—'
                         ) : formatDateTime(item.createdAt)}
@@ -860,7 +860,7 @@ export default function AdminOrdersView({ showDemoDates = false, onToggleDemoDat
                   )}
                   {isAdmin && showDemoDates && demoTimeline?.byOrderId[selectedOrderDetail.order?.id] && (
                     <Badge bg="warning" text="dark">
-                      Mô phỏng: {demoTimeline.byOrderId[selectedOrderDetail.order.id].split('-').reverse().join('/')}
+                      Ngày: {demoTimeline.byOrderId[selectedOrderDetail.order.id].split('-').reverse().join('/')}
                     </Badge>
                   )}
                   <Button

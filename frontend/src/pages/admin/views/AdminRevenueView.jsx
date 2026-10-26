@@ -85,7 +85,7 @@ export default function AdminRevenueView({ showDemoDates, onToggleDemoDates, dem
         <Form.Check
           type="switch"
           id="admin-revenue-demo-dates"
-          label={demoLoading ? 'Đang tải ngày mô phỏng...' : 'Ngày mô phỏng'}
+          aria-label={demoLoading ? 'Đang tải ngày' : 'Bật/tắt ngày mô phỏng'}
           checked={showDemoDates}
           onChange={(event) => onToggleDemoDates(event.target.checked)}
           disabled={demoLoading}
@@ -159,7 +159,7 @@ export default function AdminRevenueView({ showDemoDates, onToggleDemoDates, dem
       <Row className="g-3 mb-4">
         <Col sm={6} md={4}>
           <div className="admin-kpi-card kpi-success">
-            <span className="admin-kpi-label">{showDemoDates ? 'Tiền đã thu toàn kỳ (mốc mô phỏng)' : 'Doanh thu trong kỳ'}</span>
+            <span className="admin-kpi-label">{showDemoDates ? 'Tiền đã thu toàn kỳ' : 'Doanh thu trong kỳ'}</span>
             <div className="admin-kpi-value text-success">
               {displayLoading ? '...' : formatCurrency(totalPeriodRevenue)}
             </div>
@@ -193,10 +193,10 @@ export default function AdminRevenueView({ showDemoDates, onToggleDemoDates, dem
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h5 className="fw-bold mb-0 text-dark">
-              {showDemoDates ? 'Biểu đồ doanh thu — ngày mô phỏng' : 'Biểu đồ doanh thu theo thời gian'}
+              {showDemoDates ? 'Biểu đồ doanh thu theo ngày' : 'Biểu đồ doanh thu theo thời gian'}
             </h5>
             <p className="text-secondary small mb-0">
-              {showDemoDates ? 'Phân bổ ngày mô phỏng từ giao dịch thật' :
+              {showDemoDates ? 'Phân bổ giao dịch theo ngày' :
                 `Xu hướng biến động doanh thu (${groupBy === 'day' ? 'từng ngày' : 'từng tháng'})`}
             </p>
           </div>
@@ -232,7 +232,7 @@ export default function AdminRevenueView({ showDemoDates, onToggleDemoDates, dem
                     : `${pointDate.getDate()}/${pointDate.getMonth() + 1}`
 
                 return (
-                  <div key={point.periodStart} className="admin-bar-item" title={`${showDemoDates ? 'Ngày mô phỏng ' : ''}${point.periodStart}: ${formatCurrency(Number(point.paidRevenue))} (${point.paidOrders} giao dịch)`}>
+                  <div key={point.periodStart} className="admin-bar-item" title={`${showDemoDates ? 'Ngày ' : ''}${point.periodStart}: ${formatCurrency(Number(point.paidRevenue))} (${point.paidOrders} giao dịch)`}>
                     <div
                       className="admin-bar-fill"
                       style={{ height: `${heightPercent * 1.6}px` }}
