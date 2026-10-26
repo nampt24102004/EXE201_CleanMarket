@@ -99,7 +99,7 @@ export default function AdminOrdersView({ showDemoDates = false, onToggleDemoDat
       const res = await api.get(`/api/manager/orders?${params.toString()}`)
       setOrders(res?.items || [])
       setPageMeta({
-        totalElements: res?.totalElements || 0,
+        totalElements: res?.total ?? 0,
         totalPages: res?.totalPages || 1,
       })
     } catch (err) {

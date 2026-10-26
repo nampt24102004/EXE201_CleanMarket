@@ -68,7 +68,7 @@ export default function AdminPaymentsView({ showDemoDates, onToggleDemoDates, de
       params.append('size', String(size))
 
       const data = await api.get(`/api/admin/payments?${params.toString()}`)
-      setPaymentData(data || { items: [], totalElements: 0, totalPages: 0, page: 0 })
+      setPaymentData(data ? { ...data, totalElements: data.total ?? 0 } : { items: [], totalElements: 0, totalPages: 0, page: 0 })
     } catch (err) {
       setError(err.message || 'Lỗi tải danh sách thanh toán.')
     } finally {

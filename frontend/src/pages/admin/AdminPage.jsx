@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Spinner, Alert } from 'react-bootstrap'
+import { Spinner, Alert, Button } from 'react-bootstrap'
 import AdminSidebar from './AdminSidebar'
 import AdminTopbar from './AdminTopbar'
 import AdminDashboardView from './views/AdminDashboardView'
@@ -18,38 +18,28 @@ import AdminBannersView from './views/AdminBannersView'
 import { api } from '../../services/apiClient'
 import { useAuth } from '../../context/useAuth'
 import { buildDemoTimeline, loadAllAdminPages } from './demoTimeline'
+import { useAdminDemoDates } from './useAdminDemoDates'
 import './admin.css'
 
 export default function AdminPage({ onCatalogChanged }) {
   const { section = '' } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const demoStorageKey = `cleanmarket:admin-demo-dates:${user?.id ?? 'unknown'}`
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
-  const [showDemoDates, setShowDemoDates] = useState(() => {
-    try {
-      return window.sessionStorage.getItem(demoStorageKey) === 'true'
-    } catch {
-      return false
-    }
-  })
+  const [showDemoDates, setShowDemoDates] = useAdminDemoDates(user.id)
   const [demoTimeline, setDemoTimeline] = useState(null)
   const [demoLoading, setDemoLoading] = useState(false)
   const [demoError, setDemoError] = useState('')
 
   const toggleDemoDates = useCallback((enabled) => {
     if (enabled) setDemoTimeline(null)
+    setDemoError('')
     setShowDemoDates(enabled)
-    try {
-      window.sessionStorage.setItem(demoStorageKey, String(enabled))
-    } catch {
-      // Private browsing can disable session storage; the current page still works.
-    }
-  }, [demoStorageKey])
+  }, [setShowDemoDates])
 
   const loadDemoTimeline = useCallback(async () => {
     setDemoLoading(true)
@@ -59,11 +49,10 @@ export default function AdminPage({ onCatalogChanged }) {
       setDemoTimeline(buildDemoTimeline(orders))
     } catch (err) {
       setDemoError(err.message || 'Không thể tạo mốc thời gian mô phỏng.')
-      toggleDemoDates(false)
     } finally {
       setDemoLoading(false)
     }
-  }, [toggleDemoDates])
+  }, [])
 
   useEffect(() => {
     if (showDemoDates) void Promise.resolve().then(loadDemoTimeline)
@@ -76,6 +65,8 @@ export default function AdminPage({ onCatalogChanged }) {
     demoLoading,
     refreshDemoTimeline: loadDemoTimeline,
   }
+  const waitingForDemo = showDemoDates && !demoTimeline &&
+    ['orders', 'revenue-reports', 'payments'].includes(section)
 
   const loadSummary = useCallback(async () => {
     try {
@@ -175,15 +166,21 @@ export default function AdminPage({ onCatalogChanged }) {
               {error}
             </Alert>
           )}
-          {demoError && <Alert variant="danger" onClose={() => setDemoError('')} dismissible>{demoError}</Alert>}
+          {demoError && showDemoDates && (
+            <Alert variant="danger">
+              <div>{demoError}</div>
+              <Button size="sm" variant="outline-danger" className="mt-2 me-2" onClick={loadDemoTimeline} disabled={demoLoading}>Thử tải lại ngày mô phỏng</Button>
+              <Button size="sm" variant="outline-secondary" className="mt-2" onClick={() => toggleDemoDates(false)}>Tắt ngày mô phỏng</Button>
+            </Alert>
+          )}
 
-          {loading ? (
+          {loading || (waitingForDemo && !demoError) ? (
             <div className="text-center py-5">
               <Spinner animation="border" variant="success" />
-              <div className="mt-2 text-secondary small">Đang khởi tạo không gian quản trị...</div>
+              <div className="mt-2 text-secondary small">{waitingForDemo ? 'Đang tải ngày mô phỏng dùng chung...' : 'Đang khởi tạo không gian quản trị...'}</div>
             </div>
           ) : (
-            mainView
+            waitingForDemo ? null : mainView
           )}
         </main>
       </div>
