@@ -53,9 +53,30 @@ const paymentMethodLabel = {
   PAYOS: 'Thanh toán trực tuyến PayOS',
 }
 
+// Presentation-only dates: one day per order, preserving the true order sequence.
+// Never send these dates to the API or use them for filtering/accounting.
+function spreadDemoOrderDates(allOrders) {
+  const datedOrders = allOrders
+    .filter((order) => order.createdAt && !Number.isNaN(new Date(order.createdAt).getTime()))
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt) || a.id - b.id)
+  if (!datedOrders.length) return {}
+
+  const anchor = new Date(datedOrders[datedOrders.length - 1].createdAt)
+  return Object.fromEntries(datedOrders.map((order, index) => {
+    const displayDate = new Date(anchor)
+    displayDate.setUTCDate(displayDate.getUTCDate() - (datedOrders.length - 1 - index))
+    return [order.id, displayDate.toISOString()]
+  }))
+}
+
 export default function AdminOrdersView() {
   const { hasRole } = useAuth()
+  const isAdmin = hasRole('ADMIN')
   const [orders, setOrders] = useState([])
+  const [showDemoDates, setShowDemoDates] = useState(false)
+  const [demoDates, setDemoDates] = useState({})
+  const [demoLoading, setDemoLoading] = useState(false)
+  const [demoError, setDemoError] = useState('')
   const [pageMeta, setPageMeta] = useState({ totalElements: 0, totalPages: 1 })
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [paymentFilter, setPaymentFilter] = useState('ALL')
@@ -113,6 +134,29 @@ export default function AdminOrdersView() {
     void Promise.resolve().then(loadOrders)
   }, [loadOrders])
 
+  const loadDemoDates = useCallback(async () => {
+    setDemoLoading(true)
+    setDemoError('')
+    try {
+      const first = await api.get('/api/manager/orders?page=0&size=100')
+      const totalPages = first?.totalPages || 1
+      if (totalPages > 50) throw new Error('Có quá nhiều đơn để tạo mốc thời gian mô phỏng.')
+      const rest = await Promise.all(Array.from({ length: totalPages - 1 }, (_, index) =>
+        api.get(`/api/manager/orders?page=${index + 1}&size=100`)))
+      const allOrders = [first, ...rest].flatMap((page) => page?.items || [])
+      setDemoDates(spreadDemoOrderDates(allOrders))
+    } catch (err) {
+      setDemoError(err.message || 'Không thể tải mốc thời gian mô phỏng.')
+      setShowDemoDates(false)
+    } finally {
+      setDemoLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isAdmin && showDemoDates) void Promise.resolve().then(loadDemoDates)
+  }, [isAdmin, showDemoDates, loadDemoDates])
+
   // Paid orders still waiting for delivery confirmation, for the manager's "approve all" button.
   const isManager = hasRole('MANAGER')
   const [awaitingDelivery, setAwaitingDelivery] = useState([])
@@ -155,7 +199,7 @@ export default function AdminOrdersView() {
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await Promise.all([loadOrders(), loadAwaitingDelivery()])
+    await Promise.all([loadOrders(), loadAwaitingDelivery(), ...(isAdmin && showDemoDates ? [loadDemoDates()] : [])])
   }
 
   // Load Order Detail
@@ -300,6 +344,16 @@ export default function AdminOrdersView() {
         </Alert>
       )}
 
+      {demoError && <Alert variant="danger" className="mb-4">{demoError}</Alert>}
+
+      {isAdmin && showDemoDates && (
+        <Alert variant="warning" className="mb-4">
+          <strong>Chế độ ngày mô phỏng — chỉ để trình bày.</strong> Mỗi đơn được hiển thị cách nhau một ngày.
+          Ngày tạo thật vẫn hiển thị bên dưới; bộ lọc, thanh toán, biểu đồ doanh thu và dữ liệu trong database
+          không thay đổi. Không dùng ngày mô phỏng để báo cáo doanh số thực.
+        </Alert>
+      )}
+
       {/* Header Banner */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div>
@@ -313,6 +367,17 @@ export default function AdminOrdersView() {
         </div>
 
         <div className="d-flex align-items-center gap-2">
+          {isAdmin && (
+            <Form.Check
+              type="switch"
+              id="admin-demo-order-dates"
+              label={demoLoading ? 'Đang tải ngày mô phỏng...' : 'Ngày mô phỏng'}
+              checked={showDemoDates}
+              onChange={(event) => setShowDemoDates(event.target.checked)}
+              disabled={demoLoading}
+              className="small text-secondary me-2"
+            />
+          )}
           {isManager && (
             <Button
               variant="success"
@@ -614,7 +679,7 @@ export default function AdminOrdersView() {
                   <th>Phí ship</th>
                   <th>Tổng thanh toán</th>
                   <th>Trạng thái</th>
-                  <th>Thời gian</th>
+                  <th>{isAdmin && showDemoDates ? 'Ngày mô phỏng / thật' : 'Thời gian'}</th>
                   <th className="text-end" style={{ width: 130 }}>
                     Thao tác
                   </th>
@@ -725,7 +790,14 @@ export default function AdminOrdersView() {
 
                       {/* Date */}
                       <td className="small text-secondary" style={{ fontSize: '0.78rem' }}>
-                        {formatDateTime(item.createdAt)}
+                        {isAdmin && showDemoDates && demoDates[item.id] ? (
+                          <>
+                            <div className="fw-semibold text-warning-emphasis">
+                              Mô phỏng: {formatDateTime(demoDates[item.id])}
+                            </div>
+                            <div>Ngày thật: {formatDateTime(item.createdAt)}</div>
+                          </>
+                        ) : formatDateTime(item.createdAt)}
                       </td>
 
                       {/* Action */}
@@ -836,7 +908,7 @@ export default function AdminOrdersView() {
 
                 <div className="d-flex align-items-center gap-2">
                   <span className="small text-secondary">
-                    Đặt lúc: <strong>{formatDateTime(selectedOrderDetail.order?.createdAt)}</strong>
+                    Đặt lúc (thật): <strong>{formatDateTime(selectedOrderDetail.order?.createdAt)}</strong>
                   </span>
                   <Button
                     size="sm"
