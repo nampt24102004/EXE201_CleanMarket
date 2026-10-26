@@ -91,13 +91,6 @@ export default function AdminRevenueView({ showDemoDates, onToggleDemoDates, dem
           disabled={demoLoading}
         />
       </div>
-      {showDemoDates && (
-        <div className="alert alert-warning">
-          <strong>Biểu đồ mô phỏng — không phải ngày thu tiền thật.</strong> Giao dịch đã thanh toán được
-          phân bổ vào 31 ngày để trình bày; tổng số tiền và số giao dịch không đổi. Bộ lọc thời gian tạm
-          dừng, Top sản phẩm/nhà cung cấp dùng dữ liệu toàn kỳ. Tắt công tắc để xem báo cáo theo ngày thật.
-        </div>
-      )}
       {/* Filter Toolbar */}
       <div className="admin-card mb-4">
         <Row className="align-items-center g-3">

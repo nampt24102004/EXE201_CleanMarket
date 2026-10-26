@@ -301,14 +301,6 @@ export default function AdminOrdersView({ showDemoDates = false, onToggleDemoDat
         </Alert>
       )}
 
-      {isAdmin && showDemoDates && (
-        <Alert variant="warning" className="mb-4">
-          <strong>Chế độ ngày mô phỏng — chỉ để trình bày.</strong> Các đơn được phân bổ đều trong 31 ngày.
-          Ngày tạo thật vẫn hiển thị bên dưới; hai màn hình Báo cáo doanh thu và Thanh toán dùng cùng mốc mô phỏng.
-          Bộ lọc theo ngày thật và dữ liệu trong database không thay đổi. Không dùng ngày mô phỏng để báo cáo doanh số thực.
-        </Alert>
-      )}
-
       {/* Header Banner */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div>
@@ -634,7 +626,7 @@ export default function AdminOrdersView({ showDemoDates = false, onToggleDemoDat
                   <th>Phí ship</th>
                   <th>Tổng thanh toán</th>
                   <th>Trạng thái</th>
-                  <th>{isAdmin && showDemoDates ? 'Ngày mô phỏng / thật' : 'Thời gian'}</th>
+                  <th>{isAdmin && showDemoDates ? 'Ngày mô phỏng' : 'Thời gian'}</th>
                   <th className="text-end" style={{ width: 130 }}>
                     Thao tác
                   </th>
@@ -745,13 +737,12 @@ export default function AdminOrdersView({ showDemoDates = false, onToggleDemoDat
 
                       {/* Date */}
                       <td className="small text-secondary" style={{ fontSize: '0.78rem' }}>
-                        {isAdmin && showDemoDates && demoTimeline?.byOrderId[item.id] ? (
-                          <>
+                        {isAdmin && showDemoDates ? (
+                          demoTimeline?.byOrderId[item.id] ? (
                             <div className="fw-semibold text-warning-emphasis">
                               Mô phỏng: {demoTimeline.byOrderId[item.id].split('-').reverse().join('/')}
                             </div>
-                            <div>Ngày thật: {formatDateTime(item.createdAt)}</div>
-                          </>
+                          ) : '—'
                         ) : formatDateTime(item.createdAt)}
                       </td>
 
@@ -862,9 +853,11 @@ export default function AdminOrdersView({ showDemoDates = false, onToggleDemoDat
                 </div>
 
                 <div className="d-flex align-items-center gap-2">
-                  <span className="small text-secondary">
-                    Đặt lúc (thật): <strong>{formatDateTime(selectedOrderDetail.order?.createdAt)}</strong>
-                  </span>
+                  {!(isAdmin && showDemoDates) && (
+                    <span className="small text-secondary">
+                      Đặt lúc: <strong>{formatDateTime(selectedOrderDetail.order?.createdAt)}</strong>
+                    </span>
+                  )}
                   {isAdmin && showDemoDates && demoTimeline?.byOrderId[selectedOrderDetail.order?.id] && (
                     <Badge bg="warning" text="dark">
                       Mô phỏng: {demoTimeline.byOrderId[selectedOrderDetail.order.id].split('-').reverse().join('/')}
@@ -1041,7 +1034,7 @@ export default function AdminOrdersView({ showDemoDates = false, onToggleDemoDat
                           )}
                           <div className="d-flex justify-content-between text-secondary mt-1" style={{ fontSize: '0.75rem' }}>
                             <span>Số tiền: {formatCurrency(Number(p.amount))}</span>
-                            <span>{formatDateTime(p.paidAt || p.createdAt)}</span>
+                            {!(isAdmin && showDemoDates) && <span>{formatDateTime(p.paidAt || p.createdAt)}</span>}
                           </div>
                         </div>
                       ))
@@ -1145,9 +1138,11 @@ export default function AdminOrdersView({ showDemoDates = false, onToggleDemoDat
                             <strong className="text-dark">
                               {h.actorEmail || 'Hệ thống'}
                             </strong>
-                            <span className="text-muted" style={{ fontSize: '0.75rem' }}>
-                              {formatDateTime(h.createdAt)}
-                            </span>
+                            {!(isAdmin && showDemoDates) && (
+                              <span className="text-muted" style={{ fontSize: '0.75rem' }}>
+                                {formatDateTime(h.createdAt)}
+                              </span>
+                            )}
                           </div>
                           {h.note && (
                             <div className="text-secondary mt-1">{h.note}</div>

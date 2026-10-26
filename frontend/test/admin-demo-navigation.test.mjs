@@ -64,6 +64,8 @@ test('admin can enable demo dates, navigate all three pages, reload, retry and d
     await click('#admin-demo-order-dates')
     checked('admin-demo-order-dates')
     assert.match(document.querySelector('tbody').textContent, /Mô phỏng: 19\/09\/2026/)
+    assert.doesNotMatch(document.querySelector('tbody tr').textContent, /Ngày thật|19\/10\/2026/)
+    assert.equal(document.querySelector('.alert-warning'), null)
 
     await click('a[href="/admin/revenue-reports"]')
     checked('admin-revenue-demo-dates')
@@ -71,10 +73,13 @@ test('admin can enable demo dates, navigate all three pages, reload, retry and d
     assert.equal(document.querySelectorAll('.admin-bar-item').length, 31)
     assert.match(document.querySelector('.kpi-success .admin-kpi-value').textContent, /5\.300\.000/)
     assert.equal(document.querySelector('input[type="date"]').disabled, true)
+    assert.equal(document.querySelector('.alert-warning'), null)
 
     await click('a[href="/admin/payments"]')
     checked('admin-payment-demo-dates')
     assert.match(document.querySelector('tbody').textContent, /Mô phỏng: 19\/09\/2026/)
+    assert.doesNotMatch(document.querySelector('tbody tr').textContent, /Ngày thật|19\/10\/2026/)
+    assert.equal(document.querySelector('.alert-warning'), null)
     assert.match(document.querySelector('.admin-payments-view').textContent, /Tổng cộng 67 giao dịch/)
     await act(async () => root.unmount())
     root = null
@@ -95,6 +100,8 @@ test('admin can enable demo dates, navigate all three pages, reload, retry and d
     checked('admin-payment-demo-dates')
 
     await click('#admin-payment-demo-dates')
+    assert.match(document.querySelector('tbody tr').textContent, /19\/10\/2026/)
+    assert.doesNotMatch(document.querySelector('tbody').textContent, /Mô phỏng:/)
     await click('a[href="/admin/revenue-reports"]')
     assert.equal(document.getElementById('admin-revenue-demo-dates').checked, false)
     assert.match(document.querySelector('.admin-revenue-view').textContent, /Biểu đồ doanh thu theo thời gian/)

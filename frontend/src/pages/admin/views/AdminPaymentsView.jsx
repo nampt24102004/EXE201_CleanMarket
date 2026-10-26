@@ -123,13 +123,6 @@ export default function AdminPaymentsView({ showDemoDates, onToggleDemoDates, de
           disabled={demoLoading}
         />
       </div>
-      {showDemoDates && (
-        <Alert variant="warning">
-          <strong>Ngày mô phỏng — chỉ để trình bày.</strong> Mốc ngày được phân bổ cùng danh sách đơn hàng.
-          Thời gian giao dịch thật luôn hiển thị; đối soát PayOS, trạng thái và dữ liệu gốc không thay đổi.
-        </Alert>
-      )}
-
       {/* Filter Card */}
       <div className="admin-card mb-4">
         <Row className="g-3 align-items-center">
@@ -244,7 +237,7 @@ export default function AdminPaymentsView({ showDemoDates, onToggleDemoDates, de
                 <th>Cổng</th>
                 <th>Số tiền</th>
                 <th>Trạng thái</th>
-                <th>{showDemoDates ? 'Ngày mô phỏng / thật' : 'Thời gian'}</th>
+                <th>{showDemoDates ? 'Ngày mô phỏng' : 'Thời gian'}</th>
                 <th>Hành động</th>
               </tr>
             </thead>
@@ -285,13 +278,12 @@ export default function AdminPaymentsView({ showDemoDates, onToggleDemoDates, de
                       </span>
                     </td>
                     <td className="small text-secondary">
-                      {showDemoDates && demoTimeline?.byOrderCode[item.orderCode] ? (
-                        <>
+                      {showDemoDates ? (
+                        demoTimeline?.byOrderCode[item.orderCode] ? (
                           <div className="fw-semibold text-warning-emphasis">
                             Mô phỏng: {demoTimeline.byOrderCode[item.orderCode].split('-').reverse().join('/')}
                           </div>
-                          <div>Ngày thật: {new Date(item.createdAt).toLocaleString('vi-VN')}</div>
-                        </>
+                        ) : '—'
                       ) : new Date(item.createdAt).toLocaleString('vi-VN')}
                     </td>
                     <td>
@@ -401,24 +393,28 @@ export default function AdminPaymentsView({ showDemoDates, onToggleDemoDates, de
                 <span className="text-secondary">Mã giao dịch đối tác:</span>
                 <span className="font-monospace">{selectedPayment.providerTransactionNo || 'Chưa có'}</span>
               </div>
-              <div className="d-flex justify-content-between py-2 border-bottom">
-                <span className="text-secondary">Thời gian tạo thật:</span>
-                <span>{new Date(selectedPayment.createdAt).toLocaleString('vi-VN')}</span>
-              </div>
+              {!showDemoDates && (
+                <div className="d-flex justify-content-between py-2 border-bottom">
+                  <span className="text-secondary">Thời gian tạo:</span>
+                  <span>{new Date(selectedPayment.createdAt).toLocaleString('vi-VN')}</span>
+                </div>
+              )}
               {showDemoDates && demoTimeline?.byOrderCode[selectedPayment.orderCode] && (
                 <div className="d-flex justify-content-between py-2 border-bottom">
                   <span className="text-secondary">Ngày mô phỏng:</span>
                   <strong>{demoTimeline.byOrderCode[selectedPayment.orderCode].split('-').reverse().join('/')}</strong>
                 </div>
               )}
-              <div className="d-flex justify-content-between py-2">
-                <span className="text-secondary">Thời gian thanh toán:</span>
-                <span>
-                  {selectedPayment.paidAt
-                    ? new Date(selectedPayment.paidAt).toLocaleString('vi-VN')
-                    : 'Chưa thanh toán'}
-                </span>
-              </div>
+              {!showDemoDates && (
+                <div className="d-flex justify-content-between py-2">
+                  <span className="text-secondary">Thời gian thanh toán:</span>
+                  <span>
+                    {selectedPayment.paidAt
+                      ? new Date(selectedPayment.paidAt).toLocaleString('vi-VN')
+                      : 'Chưa thanh toán'}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </Modal.Body>
