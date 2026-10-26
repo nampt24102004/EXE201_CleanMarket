@@ -22,6 +22,6 @@ npm run build
 
 Đăng nhập, session, CSRF, catalog, giỏ hàng, checkout, đơn hàng, hồ sơ, truy xuất và các portal Partner/Manager/Admin đều sử dụng API backend. VNPAY cần các biến Sandbox hợp lệ trong `backend/.env` để tạo URL thanh toán thật.
 
-## Ngày mô phỏng trong danh sách đơn quản trị
+## Ngày mô phỏng trong các trang quản trị
 
-Tài khoản ADMIN có công tắc **Ngày mô phỏng** ở màn hình Quản lý Đơn hàng. Khi bật, danh sách hiển thị mỗi đơn cách nhau một ngày theo thứ tự tạo, để trình bày giao diện; **ngày tạo thật luôn hiển thị kèm theo**. Công tắc mặc định tắt và chỉ thay đổi hiển thị trong phiên xem hiện tại. Bộ lọc ngày, báo cáo doanh thu, thanh toán, lịch sử đơn và dữ liệu database vẫn dùng ngày thật. Không dùng ngày mô phỏng làm số liệu kinh doanh thực.
+Tài khoản ADMIN có công tắc **Ngày mô phỏng** ở ba màn hình: Quản lý Đơn hàng, Báo cáo doanh thu và Giao dịch & Đối soát PayOS. Công tắc dùng chung khi chuyển trang trong cùng phiên xem và mặc định tắt. Khi bật, các đơn được phân bổ vào 31 ngày để trình bày; bảng thanh toán dùng cùng mốc mô phỏng theo mã đơn và vẫn hiển thị ngày giao dịch thật. Biểu đồ doanh thu mô phỏng nhóm các thanh toán đã thu theo mốc đó; tổng tiền/số giao dịch giữ nguyên. Bộ lọc thời gian ở trang báo cáo tạm dừng trong chế độ này và Top sản phẩm/nhà cung cấp dùng dữ liệu toàn kỳ. Tắt công tắc để trở lại báo cáo theo ngày thật. Không có timestamp nào được ghi lại vào database, và không dùng ngày mô phỏng làm số liệu kinh doanh thực.

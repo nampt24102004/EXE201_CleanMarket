@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Row, Col, Form, Button, Table, Spinner, Badge } from 'react-bootstrap'
 import {
   Calendar,
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { api } from '../../../services/apiClient'
 import formatCurrency from '../../../utils/formatCurrency'
+import { buildDemoRevenuePoints, loadAllAdminPages } from '../demoTimeline'
 
 const getInitialDateRange = () => {
   const d = new Date()
@@ -19,7 +20,7 @@ const getInitialDateRange = () => {
   return { from, to }
 }
 
-export default function AdminRevenueView() {
+export default function AdminRevenueView({ showDemoDates, onToggleDemoDates, demoTimeline, demoLoading }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [groupBy, setGroupBy] = useState('day')
@@ -28,37 +29,75 @@ export default function AdminRevenueView() {
   const [revenuePoints, setRevenuePoints] = useState([])
   const [topProducts, setTopProducts] = useState([])
   const [topSuppliers, setTopSuppliers] = useState([])
+  const requestSeq = useRef(0)
 
   const loadReports = useCallback(async () => {
+    const requestId = ++requestSeq.current
     setLoading(true)
     setError('')
     try {
-      const queryParams = `from=${dateRange.from}&to=${dateRange.to}`
-      const [rev, prods, sups] = await Promise.all([
-        api.get(`/api/admin/reports/revenue?${queryParams}&groupBy=${groupBy}`),
-        api.get(`/api/admin/reports/top-products?${queryParams}&limit=6`),
-        api.get(`/api/admin/reports/top-suppliers?${queryParams}&limit=6`),
-      ])
-      setRevenuePoints(rev || [])
-      setTopProducts(prods || [])
-      setTopSuppliers(sups || [])
+      if (showDemoDates) {
+        if (!demoTimeline) return
+        const [payments, prods, sups] = await Promise.all([
+          loadAllAdminPages(api, '/api/admin/payments'),
+          api.get('/api/admin/reports/top-products?limit=6'),
+          api.get('/api/admin/reports/top-suppliers?limit=6'),
+        ])
+        if (requestId === requestSeq.current) {
+          setRevenuePoints(buildDemoRevenuePoints(payments, demoTimeline))
+          setTopProducts(prods || [])
+          setTopSuppliers(sups || [])
+        }
+      } else {
+        const queryParams = `from=${dateRange.from}&to=${dateRange.to}`
+        const [rev, prods, sups] = await Promise.all([
+          api.get(`/api/admin/reports/revenue?${queryParams}&groupBy=${groupBy}`),
+          api.get(`/api/admin/reports/top-products?${queryParams}&limit=6`),
+          api.get(`/api/admin/reports/top-suppliers?${queryParams}&limit=6`),
+        ])
+        if (requestId === requestSeq.current) {
+          setRevenuePoints(rev || [])
+          setTopProducts(prods || [])
+          setTopSuppliers(sups || [])
+        }
+      }
     } catch (err) {
-      setError(err.message || 'Lỗi tải báo cáo doanh thu.')
+      if (requestId === requestSeq.current) setError(err.message || 'Lỗi tải báo cáo doanh thu.')
     } finally {
-      setLoading(false)
+      if (requestId === requestSeq.current) setLoading(false)
     }
-  }, [dateRange, groupBy])
+  }, [dateRange, groupBy, showDemoDates, demoTimeline])
 
   useEffect(() => {
-    void Promise.resolve().then(loadReports)
-  }, [loadReports])
+    if (!showDemoDates || demoTimeline) void Promise.resolve().then(loadReports)
+  }, [loadReports, showDemoDates, demoTimeline])
 
+  const displayLoading = loading || (showDemoDates && (demoLoading || !demoTimeline))
   const totalPeriodRevenue = revenuePoints.reduce((acc, cur) => acc + Number(cur.paidRevenue || 0), 0)
   const totalPeriodOrders = revenuePoints.reduce((acc, cur) => acc + Number(cur.paidOrders || 0), 0)
   const maxBarRevenue = Math.max(...revenuePoints.map((p) => Number(p.paidRevenue || 0)), 1)
+  const visibleFrom = showDemoDates ? demoTimeline?.from : dateRange.from
+  const visibleTo = showDemoDates ? demoTimeline?.to : dateRange.to
 
   return (
     <div className="admin-revenue-view">
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <Form.Check
+          type="switch"
+          id="admin-revenue-demo-dates"
+          label={demoLoading ? 'Đang tải ngày mô phỏng...' : 'Ngày mô phỏng'}
+          checked={showDemoDates}
+          onChange={(event) => onToggleDemoDates(event.target.checked)}
+          disabled={demoLoading}
+        />
+      </div>
+      {showDemoDates && (
+        <div className="alert alert-warning">
+          <strong>Biểu đồ mô phỏng — không phải ngày thu tiền thật.</strong> Giao dịch đã thanh toán được
+          phân bổ vào 31 ngày để trình bày; tổng số tiền và số giao dịch không đổi. Bộ lọc thời gian tạm
+          dừng, Top sản phẩm/nhà cung cấp dùng dữ liệu toàn kỳ. Tắt công tắc để xem báo cáo theo ngày thật.
+        </div>
+      )}
       {/* Filter Toolbar */}
       <div className="admin-card mb-4">
         <Row className="align-items-center g-3">
@@ -70,8 +109,9 @@ export default function AdminRevenueView() {
               <Form.Control
                 type="date"
                 size="sm"
-                value={dateRange.from}
+                value={showDemoDates ? demoTimeline?.from || '' : dateRange.from}
                 onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                disabled={showDemoDates}
               />
             </Form.Group>
           </Col>
@@ -83,8 +123,9 @@ export default function AdminRevenueView() {
               <Form.Control
                 type="date"
                 size="sm"
-                value={dateRange.to}
+                value={showDemoDates ? demoTimeline?.to || '' : dateRange.to}
                 onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                disabled={showDemoDates}
               />
             </Form.Group>
           </Col>
@@ -95,8 +136,9 @@ export default function AdminRevenueView() {
               </Form.Label>
               <Form.Select
                 size="sm"
-                value={groupBy}
+                value={showDemoDates ? 'day' : groupBy}
                 onChange={(e) => setGroupBy(e.target.value)}
+                disabled={showDemoDates}
               >
                 <option value="day">Theo ngày (Day)</option>
                 <option value="month">Theo tháng (Month)</option>
@@ -109,7 +151,7 @@ export default function AdminRevenueView() {
               size="sm"
               className="w-100 d-flex align-items-center justify-content-center gap-2"
               onClick={loadReports}
-              disabled={loading}
+              disabled={displayLoading}
             >
               <RefreshCw size={14} className={loading ? 'spin' : ''} />
               <span>Cập nhật báo cáo</span>
@@ -124,18 +166,18 @@ export default function AdminRevenueView() {
       <Row className="g-3 mb-4">
         <Col sm={6} md={4}>
           <div className="admin-kpi-card kpi-success">
-            <span className="admin-kpi-label">Doanh thu trong kỳ</span>
+            <span className="admin-kpi-label">{showDemoDates ? 'Tiền đã thu toàn kỳ (mốc mô phỏng)' : 'Doanh thu trong kỳ'}</span>
             <div className="admin-kpi-value text-success">
-              {formatCurrency(totalPeriodRevenue)}
+              {displayLoading ? '...' : formatCurrency(totalPeriodRevenue)}
             </div>
             <div className="small text-secondary mt-1">Đã thanh toán thực tế</div>
           </div>
         </Col>
         <Col sm={6} md={4}>
           <div className="admin-kpi-card kpi-primary">
-            <span className="admin-kpi-label">Đơn hàng hoàn tất</span>
+            <span className="admin-kpi-label">{showDemoDates ? 'Giao dịch đã thu toàn kỳ' : 'Đơn hàng hoàn tất'}</span>
             <div className="admin-kpi-value text-primary">
-              {totalPeriodOrders} đơn
+              {displayLoading ? '...' : `${totalPeriodOrders} ${showDemoDates ? 'giao dịch' : 'đơn'}`}
             </div>
             <div className="small text-secondary mt-1">Giao dịch đã xác nhận thu tiền</div>
           </div>
@@ -144,7 +186,7 @@ export default function AdminRevenueView() {
           <div className="admin-kpi-card kpi-purple">
             <span className="admin-kpi-label">Giá trị trung bình / đơn</span>
             <div className="admin-kpi-value text-dark">
-              {totalPeriodOrders > 0
+              {displayLoading ? '...' : totalPeriodOrders > 0
                 ? formatCurrency(Math.round(totalPeriodRevenue / totalPeriodOrders))
                 : '0₫'}
             </div>
@@ -157,9 +199,12 @@ export default function AdminRevenueView() {
       <div className="admin-card mb-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h5 className="fw-bold mb-0 text-dark">Biểu đồ doanh thu theo thời gian</h5>
+            <h5 className="fw-bold mb-0 text-dark">
+              {showDemoDates ? 'Biểu đồ doanh thu — ngày mô phỏng' : 'Biểu đồ doanh thu theo thời gian'}
+            </h5>
             <p className="text-secondary small mb-0">
-              Xu hướng biến động doanh thu ({groupBy === 'day' ? 'từng ngày' : 'từng tháng'})
+              {showDemoDates ? 'Phân bổ ngày mô phỏng từ giao dịch thật' :
+                `Xu hướng biến động doanh thu (${groupBy === 'day' ? 'từng ngày' : 'từng tháng'})`}
             </p>
           </div>
           <Badge bg="success" className="px-3 py-2">
@@ -167,7 +212,7 @@ export default function AdminRevenueView() {
           </Badge>
         </div>
 
-        {loading ? (
+        {displayLoading ? (
           <div className="text-center py-5">
             <Spinner animation="border" variant="success" />
           </div>
@@ -189,12 +234,12 @@ export default function AdminRevenueView() {
                 )
                 const pointDate = new Date(point.periodStart)
                 const label =
-                  groupBy === 'month'
+                  !showDemoDates && groupBy === 'month'
                     ? `Tháng ${pointDate.getMonth() + 1}`
                     : `${pointDate.getDate()}/${pointDate.getMonth() + 1}`
 
                 return (
-                  <div key={point.periodStart} className="admin-bar-item" title={`${point.periodStart}: ${formatCurrency(Number(point.paidRevenue))} (${point.paidOrders} đơn)`}>
+                  <div key={point.periodStart} className="admin-bar-item" title={`${showDemoDates ? 'Ngày mô phỏng ' : ''}${point.periodStart}: ${formatCurrency(Number(point.paidRevenue))} (${point.paidOrders} giao dịch)`}>
                     <div
                       className="admin-bar-fill"
                       style={{ height: `${heightPercent * 1.6}px` }}
@@ -210,8 +255,8 @@ export default function AdminRevenueView() {
               })}
             </div>
             <div className="d-flex justify-content-between text-secondary small mt-2">
-              <span>{dateRange.from}</span>
-              <span>{dateRange.to}</span>
+              <span>{visibleFrom}</span>
+              <span>{visibleTo}</span>
             </div>
           </div>
         )}
@@ -232,7 +277,7 @@ export default function AdminRevenueView() {
               </div>
             </div>
 
-            {loading ? (
+            {displayLoading ? (
               <div className="text-center py-4"><Spinner animation="border" size="sm" variant="success" /></div>
             ) : topProducts.length === 0 ? (
               <p className="text-secondary small">Chưa có dữ liệu sản phẩm trong kỳ.</p>
@@ -288,7 +333,7 @@ export default function AdminRevenueView() {
               </div>
             </div>
 
-            {loading ? (
+            {displayLoading ? (
               <div className="text-center py-4"><Spinner animation="border" size="sm" variant="primary" /></div>
             ) : topSuppliers.length === 0 ? (
               <p className="text-secondary small">Chưa có dữ liệu đối tác trong kỳ.</p>

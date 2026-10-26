@@ -16,6 +16,7 @@ import AdminProductsView from './views/AdminProductsView'
 import AdminOrdersView from './views/AdminOrdersView'
 import AdminBannersView from './views/AdminBannersView'
 import { api } from '../../services/apiClient'
+import { buildDemoTimeline, loadAllAdminPages } from './demoTimeline'
 import './admin.css'
 
 export default function AdminPage({ onCatalogChanged }) {
@@ -26,6 +27,41 @@ export default function AdminPage({ onCatalogChanged }) {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
+  const [showDemoDates, setShowDemoDates] = useState(false)
+  const [demoTimeline, setDemoTimeline] = useState(null)
+  const [demoLoading, setDemoLoading] = useState(false)
+  const [demoError, setDemoError] = useState('')
+
+  const loadDemoTimeline = useCallback(async () => {
+    setDemoLoading(true)
+    setDemoError('')
+    try {
+      const orders = await loadAllAdminPages(api, '/api/manager/orders')
+      setDemoTimeline(buildDemoTimeline(orders))
+    } catch (err) {
+      setDemoError(err.message || 'Không thể tạo mốc thời gian mô phỏng.')
+      setShowDemoDates(false)
+    } finally {
+      setDemoLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (showDemoDates) void Promise.resolve().then(loadDemoTimeline)
+  }, [showDemoDates, loadDemoTimeline])
+
+  const toggleDemoDates = (enabled) => {
+    if (enabled) setDemoTimeline(null)
+    setShowDemoDates(enabled)
+  }
+
+  const demoDateProps = {
+    showDemoDates,
+    onToggleDemoDates: toggleDemoDates,
+    demoTimeline,
+    demoLoading,
+    refreshDemoTimeline: loadDemoTimeline,
+  }
 
   const loadSummary = useCallback(async () => {
     try {
@@ -57,9 +93,9 @@ export default function AdminPage({ onCatalogChanged }) {
       />
     )
   } else if (section === 'revenue-reports') {
-    mainView = <AdminRevenueView />
+    mainView = <AdminRevenueView {...demoDateProps} />
   } else if (section === 'payments') {
-    mainView = <AdminPaymentsView />
+    mainView = <AdminPaymentsView {...demoDateProps} />
   } else if (section === 'users') {
     mainView = <AdminUsersView />
   } else if (section === 'categories') {
@@ -78,7 +114,7 @@ export default function AdminPage({ onCatalogChanged }) {
       />
     )
   } else if (section === 'orders') {
-    mainView = <AdminOrdersView />
+    mainView = <AdminOrdersView {...demoDateProps} />
   } else if (section === 'banners') {
     mainView = <AdminBannersView base="/admin" />
   } else if (
@@ -125,6 +161,7 @@ export default function AdminPage({ onCatalogChanged }) {
               {error}
             </Alert>
           )}
+          {demoError && <Alert variant="danger" onClose={() => setDemoError('')} dismissible>{demoError}</Alert>}
 
           {loading ? (
             <div className="text-center py-5">

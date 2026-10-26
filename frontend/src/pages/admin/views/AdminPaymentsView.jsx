@@ -30,7 +30,7 @@ const statusBadges = {
   REFUNDED: { label: 'Đã hoàn tiền', bg: 'info', icon: RefreshCw },
 }
 
-export default function AdminPaymentsView() {
+export default function AdminPaymentsView({ showDemoDates, onToggleDemoDates, demoTimeline, demoLoading }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [successNotice, setSuccessNotice] = useState('')
@@ -110,6 +110,23 @@ export default function AdminPaymentsView() {
         <Alert variant="danger" dismissible onClose={() => setError('')}>
           <AlertTriangle size={16} className="me-2 inline-block text-danger" />
           {error}
+        </Alert>
+      )}
+
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <Form.Check
+          type="switch"
+          id="admin-payment-demo-dates"
+          label={demoLoading ? 'Đang tải ngày mô phỏng...' : 'Ngày mô phỏng'}
+          checked={showDemoDates}
+          onChange={(event) => onToggleDemoDates(event.target.checked)}
+          disabled={demoLoading}
+        />
+      </div>
+      {showDemoDates && (
+        <Alert variant="warning">
+          <strong>Ngày mô phỏng — chỉ để trình bày.</strong> Mốc ngày được phân bổ cùng danh sách đơn hàng.
+          Thời gian giao dịch thật luôn hiển thị; đối soát PayOS, trạng thái và dữ liệu gốc không thay đổi.
         </Alert>
       )}
 
@@ -227,7 +244,7 @@ export default function AdminPaymentsView() {
                 <th>Cổng</th>
                 <th>Số tiền</th>
                 <th>Trạng thái</th>
-                <th>Thời gian</th>
+                <th>{showDemoDates ? 'Ngày mô phỏng / thật' : 'Thời gian'}</th>
                 <th>Hành động</th>
               </tr>
             </thead>
@@ -268,7 +285,14 @@ export default function AdminPaymentsView() {
                       </span>
                     </td>
                     <td className="small text-secondary">
-                      {new Date(item.createdAt).toLocaleString('vi-VN')}
+                      {showDemoDates && demoTimeline?.byOrderCode[item.orderCode] ? (
+                        <>
+                          <div className="fw-semibold text-warning-emphasis">
+                            Mô phỏng: {demoTimeline.byOrderCode[item.orderCode].split('-').reverse().join('/')}
+                          </div>
+                          <div>Ngày thật: {new Date(item.createdAt).toLocaleString('vi-VN')}</div>
+                        </>
+                      ) : new Date(item.createdAt).toLocaleString('vi-VN')}
                     </td>
                     <td>
                       <div className="d-flex align-items-center gap-1">
@@ -378,9 +402,15 @@ export default function AdminPaymentsView() {
                 <span className="font-monospace">{selectedPayment.providerTransactionNo || 'Chưa có'}</span>
               </div>
               <div className="d-flex justify-content-between py-2 border-bottom">
-                <span className="text-secondary">Thời gian tạo:</span>
+                <span className="text-secondary">Thời gian tạo thật:</span>
                 <span>{new Date(selectedPayment.createdAt).toLocaleString('vi-VN')}</span>
               </div>
+              {showDemoDates && demoTimeline?.byOrderCode[selectedPayment.orderCode] && (
+                <div className="d-flex justify-content-between py-2 border-bottom">
+                  <span className="text-secondary">Ngày mô phỏng:</span>
+                  <strong>{demoTimeline.byOrderCode[selectedPayment.orderCode].split('-').reverse().join('/')}</strong>
+                </div>
+              )}
               <div className="d-flex justify-content-between py-2">
                 <span className="text-secondary">Thời gian thanh toán:</span>
                 <span>
