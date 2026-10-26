@@ -16,21 +16,40 @@ import AdminProductsView from './views/AdminProductsView'
 import AdminOrdersView from './views/AdminOrdersView'
 import AdminBannersView from './views/AdminBannersView'
 import { api } from '../../services/apiClient'
+import { useAuth } from '../../context/useAuth'
 import { buildDemoTimeline, loadAllAdminPages } from './demoTimeline'
 import './admin.css'
 
 export default function AdminPage({ onCatalogChanged }) {
   const { section = '' } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const demoStorageKey = `cleanmarket:admin-demo-dates:${user?.id ?? 'unknown'}`
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
-  const [showDemoDates, setShowDemoDates] = useState(false)
+  const [showDemoDates, setShowDemoDates] = useState(() => {
+    try {
+      return window.sessionStorage.getItem(demoStorageKey) === 'true'
+    } catch {
+      return false
+    }
+  })
   const [demoTimeline, setDemoTimeline] = useState(null)
   const [demoLoading, setDemoLoading] = useState(false)
   const [demoError, setDemoError] = useState('')
+
+  const toggleDemoDates = useCallback((enabled) => {
+    if (enabled) setDemoTimeline(null)
+    setShowDemoDates(enabled)
+    try {
+      window.sessionStorage.setItem(demoStorageKey, String(enabled))
+    } catch {
+      // Private browsing can disable session storage; the current page still works.
+    }
+  }, [demoStorageKey])
 
   const loadDemoTimeline = useCallback(async () => {
     setDemoLoading(true)
@@ -40,20 +59,15 @@ export default function AdminPage({ onCatalogChanged }) {
       setDemoTimeline(buildDemoTimeline(orders))
     } catch (err) {
       setDemoError(err.message || 'Không thể tạo mốc thời gian mô phỏng.')
-      setShowDemoDates(false)
+      toggleDemoDates(false)
     } finally {
       setDemoLoading(false)
     }
-  }, [])
+  }, [toggleDemoDates])
 
   useEffect(() => {
     if (showDemoDates) void Promise.resolve().then(loadDemoTimeline)
   }, [showDemoDates, loadDemoTimeline])
-
-  const toggleDemoDates = (enabled) => {
-    if (enabled) setDemoTimeline(null)
-    setShowDemoDates(enabled)
-  }
 
   const demoDateProps = {
     showDemoDates,
